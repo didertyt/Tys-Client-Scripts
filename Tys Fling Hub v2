@@ -1,0 +1,431 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Защита от дублей
+if PlayerGui:FindFirstChild("TysFlingGui") then
+    PlayerGui.TysFlingGui:Destroy()
+end
+
+-- Аудио система
+local function playSound(soundId: string, volume: number?, pitch: number?)
+    task.spawn(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = soundId
+        sound.Volume = volume or 0.3
+        sound.PlaybackSpeed = pitch or 1.0
+        sound.Parent = SoundService
+        sound:Play()
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+    end)
+end
+
+local function playClickSound()
+    playSound("rbxassetid://6895346061", 0.25, 1.2)
+end
+
+local function playToggleSound(state: boolean)
+    playSound("rbxassetid://6895346061", 0.3, state and 1.6 or 0.7)
+end
+
+-- Интерфейс (в 2 раза меньше через UIScale 0.5)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TysFlingGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local uiScale = Instance.new("UIScale")
+uiScale.Scale = 0.5
+uiScale.Parent = ScreenGui
+
+-- Уведомления
+local NotificationContainer = Instance.new("Frame")
+NotificationContainer.Size = UDim2.new(0, 250, 1, -20)
+NotificationContainer.Position = UDim2.new(1, -260, 0, 10)
+NotificationContainer.BackgroundTransparency = 1
+NotificationContainer.ZIndex = 100
+NotificationContainer.Parent = ScreenGui
+
+local NotifLayout = Instance.new("UIListLayout")
+NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+NotifLayout.Padding = UDim.new(0, 8)
+NotifLayout.Parent = NotificationContainer
+
+local function sendNotification(message: string, duration: number?)
+    local notifDuration = duration or 2.5
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(1, 0, 0, 40)
+    notif.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
+    notif.BackgroundTransparency = 1
+    notif.BorderColor3 = Color3.fromRGB(170, 60, 255)
+    notif.BorderSizePixel = 1
+    notif.ZIndex = 101
+    notif.Parent = NotificationContainer
+    
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 6)
+    notifCorner.Parent = notif
+    
+    local notifText = Instance.new("TextLabel")
+    notifText.Size = UDim2.new(1, -15, 1, 0)
+    notifText.Position = UDim2.new(0, 15, 0, 0)
+    notifText.BackgroundTransparency = 1
+    notifText.ZIndex = 102
+    notifText.Text = "🔮 " .. message
+    notifText.Font = Enum.Font.GothamBold
+    notifText.TextSize = 11
+    notifText.TextXAlignment = Enum.TextXAlignment.Left
+    notifText.TextColor3 = Color3.fromRGB(230, 200, 255)
+    notifText.Parent = notif
+    
+    TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3}):Play()
+    
+    task.delay(notifDuration, function()
+        if notif and notif.Parent then
+            local tweenOut = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+            tweenOut:Play()
+            tweenOut.Completed:Wait()
+            notif:Destroy()
+        end
+    end)
+end
+
+-- Кнопка открытия/закрытия
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Size = UDim2.new(0, 45, 0, 45)
+ToggleButton.Position = UDim2.new(0, 310, 0, 160)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 15, 45)
+ToggleButton.BackgroundTransparency = 0.3
+ToggleButton.BorderColor3 = Color3.fromRGB(170, 60, 255)
+ToggleButton.BorderSizePixel = 2
+ToggleButton.Text = "🌪️"
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 18
+ToggleButton.TextColor3 = Color3.fromRGB(220, 160, 255)
+ToggleButton.Active = true
+ToggleButton.Draggable = true
+ToggleButton.Parent = ScreenGui
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = ToggleButton
+
+-- Главное окно
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 450, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -180)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 8, 20)
+MainFrame.BackgroundTransparency = 0.35
+MainFrame.BorderColor3 = Color3.fromRGB(140, 50, 255)
+MainFrame.BorderSizePixel = 1
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+local UICornerMain = Instance.new("UICorner")
+UICornerMain.CornerRadius = UDim.new(0, 10)
+UICornerMain.Parent = MainFrame
+
+local AnimatedBg = Instance.new("Frame")
+AnimatedBg.Size = UDim2.new(1, 0, 1, 0)
+AnimatedBg.BackgroundColor3 = Color3.fromRGB(45, 10, 80)
+AnimatedBg.BackgroundTransparency = 0.85
+AnimatedBg.BorderSizePixel = 0
+AnimatedBg.ZIndex = 0
+AnimatedBg.Parent = MainFrame
+
+-- Шапка
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 10, 35)
+TopBar.BackgroundTransparency = 0.6
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 2
+TopBar.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(0, 310, 1, 0)
+TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.ZIndex = 2
+TitleLabel.Text = "🌪️ Tys Fling Hub  —  Target: None"
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 12
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.TextColor3 = Color3.fromRGB(230, 190, 255)
+TitleLabel.Parent = TopBar
+
+-- Кнопка обновления списка вручную
+local RefreshBtn = Instance.new("TextButton")
+RefreshBtn.Name = "RefreshButton"
+RefreshBtn.Size = UDim2.new(0, 30, 0, 30)
+RefreshBtn.Position = UDim2.new(1, -75, 0, 5)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+RefreshBtn.BackgroundTransparency = 0.4
+RefreshBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+RefreshBtn.BorderSizePixel = 1
+RefreshBtn.ZIndex = 3
+RefreshBtn.Text = "🔄"
+RefreshBtn.Font = Enum.Font.GothamBold
+RefreshBtn.TextSize = 12
+RefreshBtn.TextColor3 = Color3.fromRGB(220, 160, 255)
+RefreshBtn.Parent = TopBar
+
+local RefreshCorner = Instance.new("UICorner")
+RefreshCorner.CornerRadius = UDim.new(0, 6)
+RefreshCorner.Parent = RefreshBtn
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Name = "CloseButton"
+CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+CloseBtn.Position = UDim2.new(1, -40, 0, 2)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.ZIndex = 2
+CloseBtn.Text = "✕"
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.TextColor3 = Color3.fromRGB(180, 140, 220)
+CloseBtn.Parent = TopBar
+
+local isMenuOpen = false
+local function toggleMenu()
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        playSound("rbxassetid://4590657391", 0.35, 1.2)
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 400, 0, 320)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 450, 0, 360),
+            BackgroundTransparency = 0.35
+        }):Play()
+        sendNotification("Fling Hub opened")
+    else
+        playSound("rbxassetid://4590657391", 0.35, 0.75)
+        sendNotification("Fling Hub closed")
+        local tw = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 400, 0, 320),
+            BackgroundTransparency = 1
+        })
+        tw:Play()
+        tw.Completed:Wait()
+        MainFrame.Visible = false
+    end
+end
+
+ToggleButton.MouseButton1Click:Connect(toggleMenu)
+CloseBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- Область контента
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Size = UDim2.new(1, -20, 1, -100)
+ContentContainer.Position = UDim2.new(0, 10, 0, 50)
+ContentContainer.BackgroundColor3 = Color3.fromRGB(25, 12, 45)
+ContentContainer.BackgroundTransparency = 0.6
+ContentContainer.BorderSizePixel = 0
+ContentContainer.ZIndex = 2
+ContentContainer.Parent = MainFrame
+
+local ContentCorner = Instance.new("UICorner")
+ContentCorner.CornerRadius = UDim.new(0, 6)
+ContentCorner.Parent = ContentContainer
+
+-- Настройка прокручивающегося списка (ScrollingFrame)
+local PlayersScrollingFrame = Instance.new("ScrollingFrame")
+PlayersScrollingFrame.Size = UDim2.new(1, -8, 1, -16)
+PlayersScrollingFrame.Position = UDim2.new(0, 4, 0, 8)
+PlayersScrollingFrame.BackgroundTransparency = 1
+PlayersScrollingFrame.BorderSizePixel = 0
+PlayersScrollingFrame.ZIndex = 3
+PlayersScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayersScrollingFrame.ScrollBarThickness = 6 -- Сделали полосу прокрутки шире и удобнее для листания
+PlayersScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(170, 60, 255)
+PlayersScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y -- Автоматический расчет высоты листания
+PlayersScrollingFrame.Parent = ContentContainer
+
+local InnerListLayout = Instance.new("UIListLayout")
+InnerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+InnerListLayout.Padding = UDim.new(0, 4)
+InnerListLayout.Parent = PlayersScrollingFrame
+
+local selectedTarget: Player? = nil
+local playerRowsTable: {[Player]: TextButton} = {}
+
+local function refreshPlayerList()
+    for _, child in ipairs(PlayersScrollingFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    table.clear(playerRowsTable)
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local pRow = Instance.new("Frame")
+            pRow.Size = UDim2.new(1, -8, 0, 32)
+            pRow.BackgroundTransparency = 1
+            pRow.ZIndex = 3
+            pRow.Parent = PlayersScrollingFrame
+            
+            local pBtn = Instance.new("TextButton")
+            pBtn.Name = "PlayerRowButton"
+            pBtn.Size = UDim2.new(1, 0, 1, 0)
+            pBtn.BackgroundColor3 = (selectedTarget == player) and Color3.fromRGB(70, 20, 130) or Color3.fromRGB(40, 20, 70)
+            pBtn.BackgroundTransparency = (selectedTarget == player) and 0.1 or 0.5
+            pBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+            pBtn.BorderSizePixel = (selectedTarget == player) and 2 or 0
+            pBtn.ZIndex = 3
+            pBtn.Text = "   " .. player.Name .. " (@" .. player.DisplayName .. ")"
+            pBtn.Font = (selectedTarget == player) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+            pBtn.TextSize = 11
+            pBtn.TextXAlignment = Enum.TextXAlignment.Left
+            pBtn.TextColor3 = (selectedTarget == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(210, 170, 255)
+            pBtn.Parent = pRow
+            
+            local pCorner = Instance.new("UICorner")
+            pCorner.CornerRadius = UDim.new(0, 4)
+            pCorner.Parent = pBtn
+            
+            playerRowsTable[player] = pBtn
+            
+            pBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                selectedTarget = player
+                TitleLabel.Text = "🌪️ Tys Fling Hub  —  Target: " .. player.Name
+                for plr, btn in pairs(playerRowsTable) do
+                    if plr == selectedTarget then
+                        btn.BorderSizePixel = 2
+                        btn.BackgroundColor3 = Color3.fromRGB(70, 20, 130)
+                        btn.BackgroundTransparency = 0.1
+                        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        btn.Font = Enum.Font.GothamBold
+                    else
+                        btn.BorderSizePixel = 0
+                        btn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+                        btn.BackgroundTransparency = 0.5
+                        btn.TextColor3 = Color3.fromRGB(210, 170, 255)
+                        btn.Font = Enum.Font.GothamMedium
+                    end
+                end
+                sendNotification("Target set: " .. player.Name)
+            end)
+        end
+    end
+end
+
+-- Привязка кнопки ручного обновления
+RefreshBtn.MouseButton1Click:Connect(function()
+    playClickSound()
+    refreshPlayerList()
+    sendNotification("🔄 Player list refreshed!")
+end)
+
+refreshPlayerList()
+
+-- Автообновление списка при входе/выходе игроков
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(function(player)
+    if selectedTarget == player then
+        selectedTarget = nil
+        TitleLabel.Text = "🌪️ Tys Fling Hub  —  Target: None"
+    end
+    refreshPlayerList()
+end)
+
+-- Кнопка запуска флинга
+local FlingActionBtn = Instance.new("TextButton")
+FlingActionBtn.Size = UDim2.new(1, -20, 0, 40)
+FlingActionBtn.Position = UDim2.new(0, 10, 1, -45)
+FlingActionBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+FlingActionBtn.BackgroundTransparency = 0.2
+FlingActionBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+FlingActionBtn.BorderSizePixel = 1
+FlingActionBtn.ZIndex = 2
+FlingActionBtn.Text = "🔥 START FLING TARGET 🔥"
+FlingActionBtn.Font = Enum.Font.GothamBold
+FlingActionBtn.TextSize = 12
+FlingActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlingActionBtn.Parent = MainFrame
+
+local FlingBtnCorner = Instance.new("UICorner")
+FlingBtnCorner.CornerRadius = UDim.new(0, 6)
+FlingBtnCorner.Parent = FlingActionBtn
+
+local isFlinging = false
+FlingActionBtn.MouseButton1Click:Connect(function()
+    if isFlinging then
+        sendNotification("⚠️ Fling already in progress!")
+        return
+    end
+
+    if not selectedTarget then
+        sendNotification("⚠️ Select target from the list first!")
+        return
+    end
+    
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if not root or not hum then
+        sendNotification("⚠️ Your character is not loaded!")
+        return
+    end
+    
+    isFlinging = true
+    local startCFrame = root.CFrame
+    sendNotification("🌪️ Flinging " .. selectedTarget.Name .. " (return in 10s)...")
+    playToggleSound(true)
+    
+    task.spawn(function()
+        local target = selectedTarget
+        local startTime = os.clock()
+        
+        local noclipConn = RunService.Stepped:Connect(function()
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then 
+                        part.CanCollide = false 
+                    end
+                end
+            end
+        end)
+        
+        while os.clock() - startTime < 10 do
+            if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then 
+                break 
+            end
+            local targetRoot = target.Character.HumanoidRootPart :: BasePart
+            
+            local angle = (os.clock() * 50) % (math.pi * 2)
+            local offset = Vector3.new(math.cos(angle) * 3, 0, math.sin(angle) * 3)
+            root.CFrame = targetRoot.CFrame + offset
+            root.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+            root.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+            
+            task.wait()
+        end
+        
+        noclipConn:Disconnect()
+        
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        root.CFrame = startCFrame
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        
+        sendNotification("✅ Returned to start position with zero velocity!")
+        isFlinging = false
+    end)
+end)
