@@ -14,24 +14,26 @@ end
 
 local function playSound(soundId: string, volume: number?, pitch: number?)
     task.spawn(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId = soundId
-        sound.Volume = volume or 0.3
-        sound.PlaybackSpeed = pitch or 1.0
-        sound.Parent = SoundService
-        sound:Play()
-        sound.Ended:Connect(function()
-            sound:Destroy()
+        local success, err = pcall(function()
+            local sound = Instance.new("Sound")
+            sound.SoundId = soundId
+            sound.Volume = volume or 0.3
+            sound.PlaybackSpeed = pitch or 1.0
+            sound.Parent = SoundService
+            sound:Play()
+            sound.Ended:Connect(function()
+                sound:Destroy()
+            end)
         end)
     end)
 end
 
 local function playClickSound()
-    playSound("rbxassetid://6895346061", 0.25, 1.2)
+    playSound("rbxassetid://9114221317", 0.25, 1.2)
 end
 
 local function playToggleSound(state: boolean)
-    playSound("rbxassetid://6895346061", 0.3, state and 1.6 or 0.7)
+    playSound("rbxassetid://9114221317", 0.3, state and 1.6 or 0.7)
 end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -177,7 +179,7 @@ local isMenuOpen = false
 local function toggleMenu()
     isMenuOpen = not isMenuOpen
     if isMenuOpen then
-        playSound("rbxassetid://4590657391", 0.35, 1.2)
+        playSound("rbxassetid://9114221317", 0.35, 1.2)
         MainFrame.Visible = true
         MainFrame.Size = UDim2.new(0, 460, 0, 340)
         TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
@@ -186,7 +188,7 @@ local function toggleMenu()
         }):Play()
         sendNotification("Меню открыто")
     else
-        playSound("rbxassetid://4590657391", 0.35, 0.75)
+        playSound("rbxassetid://9114221317", 0.35, 0.75)
         sendNotification("Меню закрыто")
         local tw = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 460, 0, 340),
@@ -337,6 +339,8 @@ local function destroyHub()
     if antiFlingConnection then antiFlingConnection:Disconnect() end
     if antiVoidConnection then antiVoidConnection:Disconnect() end
     
+    if FlyControlGui then FlyControlGui:Destroy() end
+    
     local char = LocalPlayer.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -485,7 +489,7 @@ InnerListLayout.Parent = PlayersScrolling
 
 local selectedTarget: Player? = nil
 local viewingTarget: Player? = nil
-local playerRowsTable: {[Player]: {Container: Frame, TargetBtn: TextButton, TpBtn: TextButton, ViewBtn: TextButton}} = {}
+local playerRowsTable = {}
 
 RunService.RenderStepped:Connect(function()
     if viewingTarget and viewingTarget.Character and viewingTarget.Character:FindFirstChild("HumanoidRootPart") then
@@ -574,7 +578,7 @@ local function refreshPlayerList()
             tpBtn.MouseButton1Click:Connect(function()
                 playClickSound()
                 local char = LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+                local root = char and char:FindFirstChild("HumanoidRootPart")
                 if root and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     root.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
                     sendNotification("Телепортация к " .. player.Name)
@@ -673,7 +677,7 @@ local isFlinging = false
 local function performFling(target: Player, duration: number?)
     if isFlinging then return end
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum or hum.Health <= 0 then return end
     if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -695,7 +699,7 @@ local function performFling(target: Player, duration: number?)
         if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then break end
         if not char or not root or not hum or hum.Health <= 0 then break end
         
-        local targetRoot = target.Character.HumanoidRootPart :: BasePart
+        local targetRoot = target.Character.HumanoidRootPart
         local angle = (os.clock() * 50) % (math.pi * 2)
         local offset = Vector3.new(math.cos(angle) * 3, 0, math.sin(angle) * 3)
         
@@ -743,7 +747,7 @@ FlingActionBtn.MouseButton1Click:Connect(function()
         return
     end
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then
         sendNotification("⚠️ Ваш персонаж не загружен!")
@@ -757,13 +761,12 @@ FlingActionBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
-
 -- ==================== ВКЛАДКА ЗАЩИТА ====================
 local ProtectionPage = Pages.Protection
 
 local function getNearestPlayer(): Player?
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return nil end
     local nearestDist = math.huge
     local nearestPlayer = nil
@@ -818,7 +821,7 @@ AutoFlingToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 local function setupDamageDetection(character: Model)
-    local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
+    local humanoid = character:WaitForChild("Humanoid", 5)
     if not humanoid then return end
     local lastHealth = humanoid.Health
     humanoid.HealthChanged:Connect(function(newHealth)
@@ -939,7 +942,7 @@ AntiVoidToggleBtn.MouseButton1Click:Connect(function()
         
         antiVoidConnection = RunService.Stepped:Connect(function()
             local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+            local root = char and char:FindFirstChild("HumanoidRootPart")
             if root then
                 if root.Position.Y < -50 then
                     root.AssemblyLinearVelocity = Vector3.zero
@@ -967,7 +970,7 @@ end)
 
 local function teleportAndFreeze()
     local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then
         sendNotification("⚠️ Персонаж не загружен!")
@@ -1018,7 +1021,6 @@ TeleportActionBtn.MouseButton1Click:Connect(function()
     playClickSound()
     teleportAndFreeze()
 end)
-
 
 -- ==================== ВКЛАДКА ИГРОК ====================
 local PlayerPage = Pages.Player
@@ -1106,26 +1108,72 @@ local flySpeed = 50
 local walkSpeed = 16
 local jumpPower = 50
 
-local controlKeys = {W = false, A = false, S = false, D = false, Space = false, Shift = false}
+-- Переменные управления полетом для ПК и телефона
+local FlyControlGui = nil
+local flyUpPressed = false
+local flyDownPressed = false
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.W then controlKeys.W = true
-    elseif input.KeyCode == Enum.KeyCode.A then controlKeys.A = true
-    elseif input.KeyCode == Enum.KeyCode.S then controlKeys.S = true
-    elseif input.KeyCode == Enum.KeyCode.D then controlKeys.D = true
-    elseif input.KeyCode == Enum.KeyCode.Space then controlKeys.Space = true
-    elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then controlKeys.Shift = true end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.W then controlKeys.W = false
-    elseif input.KeyCode == Enum.KeyCode.A then controlKeys.A = false
-    elseif input.KeyCode == Enum.KeyCode.S then controlKeys.S = false
-    elseif input.KeyCode == Enum.KeyCode.D then controlKeys.D = false
-    elseif input.KeyCode == Enum.KeyCode.Space then controlKeys.Space = false
-    elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then controlKeys.Shift = false end
-end)
+local function createFlyControls(state: boolean)
+    if state then
+        if FlyControlGui then FlyControlGui:Destroy() end
+        
+        FlyControlGui = Instance.new("ScreenGui")
+        FlyControlGui.Name = "TysFlyControls"
+        FlyControlGui.ResetOnSpawn = false
+        FlyControlGui.Parent = PlayerGui
+        
+        local upBtn = Instance.new("TextButton")
+        upBtn.Size = UDim2.new(0, 50, 0, 50)
+        upBtn.Position = UDim2.new(1, -70, 0.5, -60)
+        upBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+        upBtn.BackgroundTransparency = 0.4
+        upBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+        upBtn.BorderSizePixel = 2
+        upBtn.Text = "⬆️"
+        upBtn.Font = Enum.Font.GothamBold
+        upBtn.TextSize = 20
+        upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        upBtn.Active = true
+        upBtn.Parent = FlyControlGui
+        
+        local upCorner = Instance.new("UICorner")
+        upCorner.CornerRadius = UDim.new(1, 0)
+        upCorner.Parent = upBtn
+        
+        upBtn.MouseButton1Down:Connect(function() flyUpPressed = true end)
+        upBtn.MouseButton1Up:Connect(function() flyUpPressed = false end)
+        upBtn.MouseLeave:Connect(function() flyUpPressed = false end)
+        
+        local downBtn = Instance.new("TextButton")
+        downBtn.Size = UDim2.new(0, 50, 0, 50)
+        downBtn.Position = UDim2.new(1, -70, 0.5, 10)
+        downBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+        downBtn.BackgroundTransparency = 0.4
+        downBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+        downBtn.BorderSizePixel = 2
+        downBtn.Text = "⬇️"
+        downBtn.Font = Enum.Font.GothamBold
+        downBtn.TextSize = 20
+        downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        downBtn.Active = true
+        downBtn.Parent = FlyControlGui
+        
+        local downCorner = Instance.new("UICorner")
+        downCorner.CornerRadius = UDim.new(1, 0)
+        downCorner.Parent = downBtn
+        
+        downBtn.MouseButton1Down:Connect(function() flyDownPressed = true end)
+        downBtn.MouseButton1Up:Connect(function() flyDownPressed = false end)
+        downBtn.MouseLeave:Connect(function() flyDownPressed = false end)
+    else
+        if FlyControlGui then
+            FlyControlGui:Destroy()
+            FlyControlGui = nil
+        end
+        flyUpPressed = false
+        flyDownPressed = false
+    end
+end
 
 local FlyToggleBtn = Instance.new("TextButton")
 FlyToggleBtn.Size = UDim2.new(1, -8, 0, 38)
@@ -1147,6 +1195,7 @@ FlyCorner.Parent = FlyToggleBtn
 FlyToggleBtn.MouseButton1Click:Connect(function()
     flyEnabled = not flyEnabled
     playToggleSound(flyEnabled)
+    createFlyControls(flyEnabled)
     
     if flyEnabled then
         FlyToggleBtn.Text = "🕊️ ПОЛЕТ: ВКЛ"
@@ -1157,7 +1206,7 @@ FlyToggleBtn.MouseButton1Click:Connect(function()
         
         flyConnection = RunService.RenderStepped:Connect(function()
             local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+            local root = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             if not root or not hum then return end
             
@@ -1165,12 +1214,17 @@ FlyToggleBtn.MouseButton1Click:Connect(function()
             local camCFrame = Camera.CFrame
             local moveDir = Vector3.zero
             
-            if controlKeys.W then moveDir += camCFrame.LookVector end
-            if controlKeys.S then moveDir -= camCFrame.LookVector end
-            if controlKeys.A then moveDir -= camCFrame.RightVector end
-            if controlKeys.D then moveDir += camCFrame.RightVector end
-            if controlKeys.Space then moveDir += Vector3.new(0, 1, 0) end
-            if controlKeys.Shift then moveDir -= Vector3.new(0, 1, 0) end
+            if hum.MoveDirection.Magnitude > 0 then
+                moveDir = camCFrame.LookVector * (hum.MoveDirection:Dot(camCFrame.LookVector)) + camCFrame.RightVector * (hum.MoveDirection:Dot(camCFrame.RightVector))
+                moveDir = moveDir.Unit
+            end
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or flyUpPressed then
+                moveDir += Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) or flyDownPressed then
+                moveDir -= Vector3.new(0, 1, 0)
+            end
             
             if moveDir.Magnitude > 0 then
                 moveDir = moveDir.Unit * flySpeed
@@ -1193,7 +1247,7 @@ FlyToggleBtn.MouseButton1Click:Connect(function()
         
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        local root = char and char:FindFirstChild("HumanoidRootPart")
         if hum then hum.PlatformStand = false end
         if root then root.AssemblyLinearVelocity = Vector3.zero end
     end
