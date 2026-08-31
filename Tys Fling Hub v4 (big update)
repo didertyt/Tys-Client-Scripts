@@ -156,7 +156,7 @@ TitleLabel.Size = UDim2.new(0, 380, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.ZIndex = 2
-TitleLabel.Text = "🌪️ Tys Fling Hub by Viq  —  Вкладка: Троллинг"
+TitleLabel.Text = "🌪️ Tys Fling Hub  —  Вкладка: Троллинг"
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 12
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -236,7 +236,8 @@ PagesContainer.Parent = MainFrame
 local Pages = {
     Troll = Instance.new("ScrollingFrame"),
     Protection = Instance.new("ScrollingFrame"),
-    Player = Instance.new("ScrollingFrame")
+    Player = Instance.new("ScrollingFrame"),
+    Whitelist = Instance.new("ScrollingFrame")
 }
 
 for name, page in pairs(Pages) do
@@ -278,8 +279,8 @@ local function switchTab(tabName: string)
             btn.BorderSizePixel = 0
         end
     end
-    local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок"}
-    TitleLabel.Text = "🌪️ Tys Fling Hub (by Viq)  —  Вкладка: " .. (ruNames[tabName] or tabName)
+    local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок", Whitelist = "Вайтлист"}
+    TitleLabel.Text = "🌪️ Tys Fling Hub  —  Вкладка: " .. (ruNames[tabName] or tabName)
 end
 
 local function createTabButton(name: string, text: string)
@@ -303,7 +304,7 @@ local function createTabButton(name: string, text: string)
     btn.MouseButton1Click:Connect(function()
         playClickSound()
         switchTab(name)
-        local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок"}
+        local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок", Whitelist = "Вайтлист"}
         sendNotification("Вкладка: " .. (ruNames[name] or name))
     end)
     
@@ -313,6 +314,7 @@ end
 createTabButton("Troll", "🌪️ Троллинг")
 createTabButton("Protection", "🛡️ Защита")
 createTabButton("Player", "👤 Игрок")
+createTabButton("Whitelist", "📜 Вайтлист")
 
 local flyEnabled = false
 local flyConnection = nil
@@ -329,6 +331,7 @@ local antiFlingConnection = nil
 local antiVoidEnabled = false
 local antiVoidConnection = nil
 local flingOnDamageEnabled = false
+local whitelistedPlayers = {}
 
 local function destroyHub()
     if flyConnection then flyConnection:Disconnect() end
@@ -771,7 +774,7 @@ local function getNearestPlayer(): Player?
     local nearestDist = math.huge
     local nearestPlayer = nil
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        if player ~= LocalPlayer and not whitelistedPlayers[player] and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local enemyHum = player.Character:FindFirstChildOfClass("Humanoid")
             if enemyHum and enemyHum.Health > 0 then
                 local dist = (player.Character.HumanoidRootPart.Position - root.Position).Magnitude
@@ -1108,7 +1111,6 @@ local flySpeed = 50
 local walkSpeed = 16
 local jumpPower = 50
 
--- Переменные управления полетом для ПК и телефона
 local FlyControlGui = nil
 local flyUpPressed = false
 local flyDownPressed = false
@@ -1477,4 +1479,145 @@ InfJumpToggleBtn.MouseButton1Click:Connect(function()
             infJumpConnection = nil
         end
     end
+end)
+
+-- ==================== ВКЛАДКА WHITELIST ====================
+local WhitelistPage = Pages.Whitelist
+
+local WhitelistHeader = Instance.new("TextLabel")
+WhitelistHeader.Size = UDim2.new(1, -8, 0, 20)
+WhitelistHeader.BackgroundTransparency = 1
+WhitelistHeader.ZIndex = 3
+WhitelistHeader.Text = "📜 БЕЛЫЙ СПИСОК ИГРОКОВ (НЕ ФЛИНГАТЬ):"
+WhitelistHeader.Font = Enum.Font.GothamBold
+WhitelistHeader.TextSize = 11
+WhitelistHeader.TextXAlignment = Enum.TextXAlignment.Left
+WhitelistHeader.TextColor3 = Color3.fromRGB(220, 180, 255)
+WhitelistHeader.Parent = WhitelistPage
+
+local WhitelistContainer = Instance.new("Frame")
+WhitelistContainer.Size = UDim2.new(1, -8, 0, 160)
+WhitelistContainer.BackgroundColor3 = Color3.fromRGB(25, 12, 45)
+WhitelistContainer.BackgroundTransparency = 0.6
+WhitelistContainer.BorderSizePixel = 0
+WhitelistContainer.ZIndex = 3
+WhitelistContainer.Parent = WhitelistPage
+
+local WListCorner = Instance.new("UICorner")
+WListCorner.CornerRadius = UDim.new(0, 6)
+WListCorner.Parent = WhitelistContainer
+
+local WhitelistScrolling = Instance.new("ScrollingFrame")
+WhitelistScrolling.Size = UDim2.new(1, -8, 1, -12)
+WhitelistScrolling.Position = UDim2.new(0, 4, 0, 6)
+WhitelistScrolling.BackgroundTransparency = 1
+WhitelistScrolling.BorderSizePixel = 0
+WhitelistScrolling.ZIndex = 4
+WhitelistScrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+WhitelistScrolling.ScrollBarThickness = 4
+WhitelistScrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+WhitelistScrolling.Parent = WhitelistContainer
+
+local WInnerLayout = Instance.new("UIListLayout")
+WInnerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+WInnerLayout.Padding = UDim.new(0, 4)
+WInnerLayout.Parent = WhitelistScrolling
+
+local function refreshWhitelistList()
+    for _, child in ipairs(WhitelistScrolling:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local isWhitelisted = whitelistedPlayers[player] == true
+            
+            local pRow = Instance.new("Frame")
+            pRow.Size = UDim2.new(1, -8, 0, 30)
+            pRow.BackgroundTransparency = 1
+            pRow.ZIndex = 4
+            pRow.Parent = WhitelistScrolling
+            
+            local pLabel = Instance.new("TextButton")
+            pLabel.Size = UDim2.new(1, -78, 1, 0)
+            pLabel.Position = UDim2.new(0, 0, 0, 0)
+            pLabel.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+            pLabel.BackgroundTransparency = 0.5
+            pLabel.BorderColor3 = Color3.fromRGB(170, 60, 255)
+            pLabel.BorderSizePixel = 0
+            pLabel.ZIndex = 4
+            pLabel.Text = "  " .. player.Name .. " (@" .. player.DisplayName .. ")"
+            pLabel.Font = Enum.Font.GothamMedium
+            pLabel.TextSize = 10
+            pLabel.TextXAlignment = Enum.TextXAlignment.Left
+            pLabel.TextColor3 = Color3.fromRGB(210, 170, 255)
+            pLabel.Parent = pRow
+            
+            local pCorner = Instance.new("UICorner")
+            pCorner.CornerRadius = UDim.new(0, 4)
+            pCorner.Parent = pLabel
+            
+            local wlBtn = Instance.new("TextButton")
+            wlBtn.Size = UDim2.new(0, 74, 1, 0)
+            wlBtn.Position = UDim2.new(1, -74, 0, 0)
+            wlBtn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(40, 120, 50) or Color3.fromRGB(80, 20, 50)
+            wlBtn.BackgroundTransparency = 0.2
+            wlBtn.BorderColor3 = isWhitelisted and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 120)
+            wlBtn.BorderSizePixel = 1
+            wlBtn.ZIndex = 5
+            wlBtn.Text = isWhitelisted and "В СИСЕ" or "ДОБАВИТЬ"
+            wlBtn.Font = Enum.Font.GothamBold
+            wlBtn.TextSize = 8
+            wlBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            wlBtn.Parent = pRow
+            
+            local wlCorner = Instance.new("UICorner")
+            wlCorner.CornerRadius = UDim.new(0, 4)
+            wlCorner.Parent = wlBtn
+            
+            wlBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                if whitelistedPlayers[player] then
+                    whitelistedPlayers[player] = nil
+                    sendNotification("❌ Игрок " .. player.Name .. " удален из вайтлиста")
+                else
+                    whitelistedPlayers[player] = true
+                    sendNotification("✅ Игрок " .. player.Name .. " добавлен в вайтлист")
+                end
+                refreshWhitelistList()
+            end)
+        end
+    end
+end
+
+refreshWhitelistList()
+Players.PlayerAdded:Connect(refreshWhitelistList)
+Players.PlayerRemoving:Connect(function(player)
+    whitelistedPlayers[player] = nil
+    refreshWhitelistList()
+end)
+
+local RefreshWlBtn = Instance.new("TextButton")
+RefreshWlBtn.Size = UDim2.new(1, -8, 0, 32)
+RefreshWlBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+RefreshWlBtn.BackgroundTransparency = 0.4
+RefreshWlBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+RefreshWlBtn.BorderSizePixel = 1
+RefreshWlBtn.ZIndex = 3
+RefreshWlBtn.Text = "🔄 Обновить список вайтлиста"
+RefreshWlBtn.Font = Enum.Font.GothamBold
+RefreshWlBtn.TextSize = 11
+RefreshWlBtn.TextColor3 = Color3.fromRGB(220, 160, 255)
+RefreshWlBtn.Parent = WhitelistPage
+
+local RefreshWlCorner = Instance.new("UICorner")
+RefreshWlCorner.CornerRadius = UDim.new(0, 6)
+RefreshWlCorner.Parent = RefreshWlBtn
+
+RefreshWlBtn.MouseButton1Click:Connect(function()
+    playClickSound()
+    refreshWhitelistList()
+    sendNotification("🔄 Вайтлист обновлен!")
 end)
