@@ -279,7 +279,7 @@ local function switchTab(tabName: string)
         end
     end
     local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок"}
-    TitleLabel.Text = "🌪️ Tys Fling Hub  —  Вкладка: " .. (ruNames[tabName] or tabName)
+    TitleLabel.Text = "🌪️ Tys Fling Hub (by Viq)  —  Вкладка: " .. (ruNames[tabName] or tabName)
 end
 
 local function createTabButton(name: string, text: string)
