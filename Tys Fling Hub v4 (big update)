@@ -161,7 +161,7 @@ TitleLabel.Size = UDim2.new(0, 380, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.ZIndex = 2
-TitleLabel.Text = "🌪️ Tys Fling Hub  —  Вкладка: Троллинг"
+TitleLabel.Text = "🌪️ Tys Fling Hub v4 (by Viq)  —  Вкладка: Троллинг"
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 12
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -285,7 +285,7 @@ local function switchTab(tabName: string)
         end
     end
     local ruNames = {Troll = "Троллинг", Protection = "Защита", Player = "Игрок", Whitelist = "Вайтлист"}
-    TitleLabel.Text = "🌪️ Tys Fling Hub  —  Вкладка: " .. (ruNames[tabName] or tabName)
+    TitleLabel.Text = "🌪️ Tys Fling Hub v4 (By Viq)  —  Вкладка: " .. (ruNames[tabName] or tabName)
 end
 
 local function createTabButton(name: string, text: string)
