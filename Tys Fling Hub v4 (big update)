@@ -44,9 +44,9 @@ ScreenGui.Parent = PlayerGui
 local uiScale = Instance.new("UIScale")
 local platform = UserInputService:GetPlatform()
 if platform == Enum.Platform.Windows or platform == Enum.Platform.OSX or platform == Enum.Platform.Linux then
-    uiScale.Scale = 1 -- Увеличение в 1.5 раза только для ПК
+    uiScale.Scale = 0.75 -- Увеличение в 1.5 раза только для ПК[cite: 1]
 else
-    uiScale.Scale = 0.5  -- Стандартный размер для телефонов и других устройств
+    uiScale.Scale = 0.5  -- Стандартный размер для телефонов и других устройств[cite: 1]
 end
 uiScale.Parent = ScreenGui
 
@@ -337,6 +337,8 @@ local antiVoidEnabled = false
 local antiVoidConnection = nil
 local flingOnDamageEnabled = false
 local whitelistedPlayers = {}
+local clickFlingEnabled = false
+local clickFlingConnection = nil
 
 local function destroyHub()
     if flyConnection then flyConnection:Disconnect() end
@@ -346,6 +348,7 @@ local function destroyHub()
     if infJumpConnection then infJumpConnection:Disconnect() end
     if antiFlingConnection then antiFlingConnection:Disconnect() end
     if antiVoidConnection then antiVoidConnection:Disconnect() end
+    if clickFlingConnection then clickFlingConnection:Disconnect() end
     
     if FlyControlGui then FlyControlGui:Destroy() end
     
@@ -767,6 +770,73 @@ FlingActionBtn.MouseButton1Click:Connect(function()
         performFling(selectedTarget, 10)
         sendNotification("✅ Возврат на исходную позицию!")
     end)
+end)
+
+local ClickFlingToggleBtn = Instance.new("TextButton")
+ClickFlingToggleBtn.Size = UDim2.new(1, -8, 0, 38)
+ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+ClickFlingToggleBtn.BackgroundTransparency = 0.3
+ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+ClickFlingToggleBtn.BorderSizePixel = 1
+ClickFlingToggleBtn.ZIndex = 3
+ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВЫКЛ"
+ClickFlingToggleBtn.Font = Enum.Font.GothamBold
+ClickFlingToggleBtn.TextSize = 11
+ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+ClickFlingToggleBtn.Parent = TrollPage
+
+local ClickFlingCorner = Instance.new("UICorner")
+ClickFlingCorner.CornerRadius = UDim.new(0, 6)
+ClickFlingCorner.Parent = ClickFlingToggleBtn
+
+ClickFlingToggleBtn.MouseButton1Click:Connect(function()
+    clickFlingEnabled = not clickFlingEnabled
+    playToggleSound(clickFlingEnabled)
+    
+    if clickFlingEnabled then
+        ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВКЛ"
+        ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🪄 Клик-флинг активирован! Нажмите на игрока.")
+        
+        clickFlingConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if gameProcessed then return end
+                local mouse = LocalPlayer:GetMouse()
+                local targetPart = mouse.Target
+                if targetPart then
+                    local character = targetPart.Parent
+                    local targetPlayer = Players:GetPlayerFromCharacter(character)
+                    if not targetPlayer and character.Parent then
+                        targetPlayer = Players:GetPlayerFromCharacter(character.Parent)
+                    end
+                    
+                    if targetPlayer and targetPlayer ~= LocalPlayer then
+                        if isFlinging then
+                            sendNotification("⚠️ Флинг уже выполняется!")
+                            return
+                        end
+                        sendNotification("🪄 Клик-флинг игрока: " .. targetPlayer.Name)
+                        task.spawn(function()
+                            performFling(targetPlayer, 8)
+                        end)
+                    end
+                end
+            end
+        end)
+    else
+        ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВЫКЛ"
+        ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🪄 Клик-флинг выключен!")
+        
+        if clickFlingConnection then
+            clickFlingConnection:Disconnect()
+            clickFlingConnection = nil
+        end
+    end
 end)
 
 -- ==================== ВКЛАДКА ЗАЩИТА ====================
