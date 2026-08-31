@@ -44,7 +44,7 @@ ScreenGui.Parent = PlayerGui
 local uiScale = Instance.new("UIScale")
 local platform = UserInputService:GetPlatform()
 if platform == Enum.Platform.Windows or platform == Enum.Platform.OSX or platform == Enum.Platform.Linux then
-    uiScale.Scale = 0.75 -- Увеличение в 1.5 раза только для ПК
+    uiScale.Scale = 1 -- Увеличение в 1.5 раза только для ПК
 else
     uiScale.Scale = 0.5  -- Стандартный размер для телефонов и других устройств
 end
