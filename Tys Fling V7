@@ -175,7 +175,7 @@ TitleLabel.Size = UDim2.new(0, 380, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.ZIndex = 2
-TitleLabel.Text = "🌪️ Tys Fling Hub v6 by Viq —  Вкладка: Фарм"
+TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq —  Вкладка: Фарм"
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 12
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -316,7 +316,7 @@ Whitelist = "Вайтлист",
 OtherScripts = "Скрипты",
 Settings = "Настройки"
 }
-TitleLabel.Text = "🌪️ Tys Fling Hub v6 by Viq  —  Вкладка: " .. (ruNames[tabName] or tabName)
+TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq  —  Вкладка: " .. (ruNames[tabName] or tabName)
 end
 
 local function createTabButton(name: string, text: string)
@@ -597,9 +597,6 @@ end)
 -- ==============================================================================
 -- Полная вкладка Фарм (Tys client)
 -- ==============================================================================
--- ==============================================================================
--- Полная вкладка Фарм (Tys client) - Свободная мышь + Авто-атака цели
--- ==============================================================================
 local FarmPage = Pages.Farm
 
 local FarmHeader = Instance.new("TextLabel")
@@ -867,6 +864,12 @@ KillActionBtn.MouseButton1Click:Connect(function()
         return
     end
 
+    if orbitKillEnabled then
+        stopOrbitKill()
+        OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
+        OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+    end
+
     infiniteKillEnabled = not infiniteKillEnabled
     playToggleSound(infiniteKillEnabled)
 
@@ -889,7 +892,6 @@ KillActionBtn.MouseButton1Click:Connect(function()
 
         local originalCFrame = root.CFrame
 
-        -- Включаем ноклип на время фарма
         local noclipConn = RunService.Stepped:Connect(function()
             if char then
                 for _, part in ipairs(char:GetDescendants()) do
@@ -898,7 +900,6 @@ KillActionBtn.MouseButton1Click:Connect(function()
             end
         end)
 
-        -- Постоянное удержание возле цели (телепортация)
         infiniteKillConnection = RunService.RenderStepped:Connect(function()
             if not selectedFarmTarget or not selectedFarmTarget.Parent or not selectedFarmTarget.Character then
                 sendNotification("⚠️ Цель вышла из игры или пропала. Возврат...")
@@ -927,7 +928,6 @@ KillActionBtn.MouseButton1Click:Connect(function()
             end
         end)
 
-        -- Фоновый поток для симуляции ударов (кликанье оружием в руке без блокировки курсора)
         attackLoopTask = task.spawn(function()
             while infiniteKillEnabled do
                 local currentCharacter = LocalPlayer.Character
@@ -935,16 +935,15 @@ KillActionBtn.MouseButton1Click:Connect(function()
                     local tool = currentCharacter:FindFirstChildOfClass("Tool")
                     if tool then
                         pcall(function()
-                            tool:Activate() -- Бьет текущим оружием в руках как при клике
+                            tool:Activate()
                         end)
                     end
                 end
-                task.wait(0.2) -- Задержка между ударами (можно уменьшить или увеличить)
+                task.wait(0.2)
             end
         end)
 
     else
-        -- Ручное выключение функции
         stopInfiniteKill()
         sendNotification("🛑Килл выключен. Возврат на точку.")
         
@@ -959,6 +958,245 @@ KillActionBtn.MouseButton1Click:Connect(function()
 
         KillActionBtn.Text = "⚔️ КИЛЛ ЦЕЛИ: ВЫКЛ"
         KillActionBtn.BackgroundColor3 = Color3.fromRGB(150, 20, 60)
+    end
+end)
+
+-- Логика Орбит Килла (вращение вокруг цели с возвратом на точку на 2 секунды при выключении)
+local orbitKillEnabled = false
+local orbitKillConnection = nil
+local orbitAttackTask = nil
+
+local function stopOrbitKill()
+    if orbitKillConnection then
+        orbitKillConnection:Disconnect()
+        orbitKillConnection = nil
+    end
+    if orbitAttackTask then
+        task.cancel(orbitAttackTask)
+        orbitAttackTask = nil
+    end
+    orbitKillEnabled = false
+end
+
+local OrbitActionBtn = Instance.new("TextButton")
+OrbitActionBtn.Size = UDim2.new(1, -8, 0, 38)
+OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+OrbitActionBtn.BackgroundTransparency = 0.2
+OrbitActionBtn.BorderColor3 = Color3.fromRGB(220, 100, 255)
+OrbitActionBtn.BorderSizePixel = 1
+OrbitActionBtn.ZIndex = 3
+OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
+OrbitActionBtn.Font = Enum.Font.GothamBold
+OrbitActionBtn.TextSize = 11
+OrbitActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OrbitActionBtn.Parent = FarmPage
+
+local OrbitBtnCorner = Instance.new("UICorner")
+OrbitBtnCorner.CornerRadius = UDim.new(0, 6)
+OrbitBtnCorner.Parent = OrbitActionBtn
+
+local function startOrbitKillProcess()
+    if not selectedFarmTarget then
+        sendNotification("⚠️ Сначала выберите цель из списка!")
+        return
+    end
+
+    if infiniteKillEnabled then
+        stopInfiniteKill()
+        KillActionBtn.Text = "⚔️ КИЛЛ ЦЕЛИ: ВЫКЛ"
+        KillActionBtn.BackgroundColor3 = Color3.fromRGB(150, 20, 60)
+    end
+
+    orbitKillEnabled = true
+    OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВКЛ"
+    OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 110)
+    OrbitActionBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+    sendNotification("🪐 Орбит килл запущен!")
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum or hum.Health <= 0 then
+        sendNotification("⚠️ Ваш персонаж не загружен!")
+        stopOrbitKill()
+        OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
+        OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+        return
+    end
+
+    local originalCFrame = root.CFrame
+
+    local noclipConn = RunService.Stepped:Connect(function()
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+    end)
+
+    local angle = 0
+    local orbitRadius = 4  
+    local orbitSpeed = 5   
+
+    orbitKillConnection = RunService.RenderStepped:Connect(function(dt)
+        if not selectedFarmTarget or not selectedFarmTarget.Parent or not selectedFarmTarget.Character then
+            sendNotification("⚠️ Цель вышла из игры. Остановка орбиты...")
+            stopOrbitKill()
+            noclipConn:Disconnect()
+            
+            if char and root and hum and hum.Health > 0 then
+                local startTime = tick()
+                while tick() - startTime < 2 do
+                    if root then
+                        root.CFrame = originalCFrame
+                        root.AssemblyLinearVelocity = Vector3.zero
+                        root.AssemblyAngularVelocity = Vector3.zero
+                    end
+                    task.renderStepped:Wait()
+                end
+            end
+            
+            OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
+            OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+            return
+        end
+
+        local targetChar = selectedFarmTarget.Character
+        local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+        local targetHum = targetChar:FindFirstChildOfClass("Humanoid")
+
+        if targetRoot and targetHum and targetHum.Health > 0 then
+            angle = angle + (orbitSpeed * dt)
+            
+            local offsetX = math.cos(angle) * orbitRadius
+            local offsetZ = math.sin(angle) * orbitRadius
+            
+            local targetPos = targetRoot.Position
+            local newPosition = targetPos + Vector3.new(offsetX, 2, offsetZ)
+            
+            root.CFrame = CFrame.new(newPosition, targetPos)
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+
+    orbitAttackTask = task.spawn(function()
+        while orbitKillEnabled do
+            local currentCharacter = LocalPlayer.Character
+            if currentCharacter then
+                local tool = currentCharacter:FindFirstChildOfClass("Tool")
+                if tool then
+                    pcall(function()
+                        tool:Activate()
+                    end)
+                end
+            end
+            task.wait(0.2)
+        end
+    end)
+end
+
+local function stopOrbitKillProcess()
+    stopOrbitKill()
+    sendNotification("🛑 Орбит килл выключен. Возврат на точку на 2 сек.")
+    
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if char and root and hum and hum.Health > 0 then
+        task.spawn(function()
+            local startTime = tick()
+            while tick() - startTime < 2 do
+                if root then
+                    root.CFrame = originalCFrame or root.CFrame
+                    root.AssemblyLinearVelocity = Vector3.zero
+                    root.AssemblyAngularVelocity = Vector3.zero
+                end
+                task.renderStepped:Wait()
+            end
+        end)
+    end
+
+    OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
+    OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
+end
+
+OrbitActionBtn.MouseButton1Click:Connect(function()
+    playToggleSound(not orbitKillEnabled)
+    if not orbitKillEnabled then
+        startOrbitKillProcess()
+    else
+        stopOrbitKillProcess()
+    end
+end)
+
+-- Логика Орбит Килл Клик (нажатие на игрока в мире для орбиты)
+local orbitClickEnabled = false
+local orbitClickConnection = nil
+
+local OrbitClickBtn = Instance.new("TextButton")
+OrbitClickBtn.Size = UDim2.new(1, -8, 0, 38)
+OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(90, 30, 140)
+OrbitClickBtn.BackgroundTransparency = 0.2
+OrbitClickBtn.BorderColor3 = Color3.fromRGB(200, 80, 255)
+OrbitClickBtn.BorderSizePixel = 1
+OrbitClickBtn.ZIndex = 3
+OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
+OrbitClickBtn.Font = Enum.Font.GothamBold
+OrbitClickBtn.TextSize = 11
+OrbitClickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OrbitClickBtn.Parent = FarmPage
+
+local OrbitClickCorner = Instance.new("UICorner")
+OrbitClickCorner.CornerRadius = UDim.new(0, 6)
+OrbitClickCorner.Parent = OrbitClickBtn
+
+OrbitClickBtn.MouseButton1Click:Connect(function()
+    orbitClickEnabled = not orbitClickEnabled
+    playToggleSound(orbitClickEnabled)
+
+    if orbitClickEnabled then
+        OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВКЛ"
+        OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(50, 15, 90)
+        sendNotification("🖱️ Нажмите на любого игрока в игре для Орбит Килла!")
+
+        orbitClickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local mouse = LocalPlayer:GetMouse()
+                local target = mouse.Target
+                
+                if target and target.Parent then
+                    local character = target.Parent
+                    local clickedPlayer = Players:GetPlayerFromCharacter(character)
+                    
+                    -- Проверяем, если кликнули по модели другого игрока
+                    if not clickedPlayer and character.Parent then
+                        clickedPlayer = Players:GetPlayerFromCharacter(character.Parent)
+                    end
+                    
+                    if clickedPlayer and clickedPlayer ~= LocalPlayer then
+                        selectedFarmTarget = clickedPlayer
+                        sendNotification("🎯 Выбрана цель кликом: " .. clickedPlayer.Name)
+                        
+                        -- Если орбит килл уже работал, перезапускаем его на новую цель
+                        if orbitKillEnabled then
+                            stopOrbitKill()
+                        end
+                        startOrbitKillProcess()
+                    end
+                end
+            end
+        end)
+    else
+        OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
+        OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(90, 30, 140)
+        if orbitClickConnection then
+            orbitClickConnection:Disconnect()
+            orbitClickConnection = nil
+        end
+        sendNotification("🖱️ Орбит килл клик выключен.")
     end
 end)
 -- ==============================================================================
