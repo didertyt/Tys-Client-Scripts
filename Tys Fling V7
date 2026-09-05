@@ -1,6 +1,6 @@
 -- STREAMING_CHUNK:Initializing services and variables...
 -- ==============================================================================
--- Tys Fling Hub (Полный скрипт с внедренным анти-войдом, вкладкой Фарм, списком игроков, функцией Килл и вкладкой Настроек)
+-- Tys Fling Hub v7 (Полный скрипт с чатом пользователей, анти-войдом, вкладкой Фарм, списком игроков, функцией Килл и Настройками)
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -8,42 +8,43 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
 if PlayerGui:FindFirstChild("TysFlingGui") then
-PlayerGui.TysFlingGui:Destroy()
+    PlayerGui.TysFlingGui:Destroy()
 end
 
 -- STREAMING_CHUNK:Defining sound functions...
 local soundsEnabled = true
 
 local function playSound(soundId: string, volume: number?, pitch: number?)
-if not soundsEnabled then return end
-task.spawn(function()
-local success, err = pcall(function()
-local sound = Instance.new("Sound")
-sound.SoundId = soundId
-sound.Volume = volume or 0.3
-sound.PlaybackSpeed = pitch or 1.0
-sound.Parent = SoundService
-sound:Play()
-sound.Ended:Connect(function()
-sound:Destroy()
-end)
-end)
-end)
+    if not soundsEnabled then return end
+    task.spawn(function()
+        pcall(function()
+            local sound = Instance.new("Sound")
+            sound.SoundId = soundId
+            sound.Volume = volume or 0.3
+            sound.PlaybackSpeed = pitch or 1.0
+            sound.Parent = SoundService
+            sound:Play()
+            sound.Ended:Connect(function()
+                sound:Destroy()
+            end)
+        end)
+    end)
 end
 
 local function playClickSound()
-playSound("rbxassetid://9114221317", 0.25, 1.2)
+    playSound("rbxassetid://9114221317", 0.25, 1.2)
 end
 
 local function playToggleSound(state: boolean)
-playSound("rbxassetid://9114221317", 0.3, state and 1.6 or 0.7)
+    playSound("rbxassetid://9114221317", 0.3, state and 1.6 or 0.7)
 end
 
 -- STREAMING_CHUNK:Creating main ScreenGui and UI containers...
@@ -55,9 +56,9 @@ ScreenGui.Parent = PlayerGui
 local uiScale = Instance.new("UIScale")
 local platform = UserInputService:GetPlatform()
 if platform == Enum.Platform.Windows or platform == Enum.Platform.OSX or platform == Enum.Platform.Linux then
-uiScale.Scale = 0.75
+    uiScale.Scale = 0.75
 else
-uiScale.Scale = 0.5
+    uiScale.Scale = 0.5
 end
 uiScale.Parent = ScreenGui
 
@@ -75,44 +76,42 @@ NotifLayout.Padding = UDim.new(0, 8)
 NotifLayout.Parent = NotificationContainer
 
 local function sendNotification(message: string, duration: number?)
-local notifDuration = duration or 2.5
-local notif = Instance.new("Frame")
-notif.Size = UDim2.new(1, 0, 0, 40)
-notif.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
-notif.BackgroundTransparency = 1
-notif.BorderColor3 = Color3.fromRGB(170, 60, 255)
-notif.BorderSizePixel = 1
-notif.ZIndex = 101
-notif.Parent = NotificationContainer
+    local notifDuration = duration or 2.5
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(1, 0, 0, 40)
+    notif.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
+    notif.BackgroundTransparency = 1
+    notif.BorderColor3 = Color3.fromRGB(170, 60, 255)
+    notif.BorderSizePixel = 1
+    notif.ZIndex = 101
+    notif.Parent = NotificationContainer
 
-local notifCorner = Instance.new("UICorner")
-notifCorner.CornerRadius = UDim.new(0, 6)
-notifCorner.Parent = notif
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 6)
+    notifCorner.Parent = notif
 
-local notifText = Instance.new("TextLabel")
-notifText.Size = UDim2.new(1, -15, 1, 0)
-notifText.Position = UDim2.new(0, 15, 0, 0)
-notifText.BackgroundTransparency = 1
-notifText.ZIndex = 102
-notifText.Text = "🔮 " .. message
-notifText.Font = Enum.Font.GothamBold
-notifText.TextSize = 11
-notifText.TextXAlignment = Enum.TextXAlignment.Left
-notifText.TextColor3 = Color3.fromRGB(230, 200, 255)
-notifText.Parent = notif
+    local notifText = Instance.new("TextLabel")
+    notifText.Size = UDim2.new(1, -15, 1, 0)
+    notifText.Position = UDim2.new(0, 15, 0, 0)
+    notifText.BackgroundTransparency = 1
+    notifText.ZIndex = 102
+    notifText.Text = "🔮 " .. message
+    notifText.Font = Enum.Font.GothamBold
+    notifText.TextSize = 11
+    notifText.TextXAlignment = Enum.TextXAlignment.Left
+    notifText.TextColor3 = Color3.fromRGB(230, 200, 255)
+    notifText.Parent = notif
 
-TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3}):Play()
+    TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3}):Play()
 
-task.delay(notifDuration, function()
-    if notif and notif.Parent then
-        local tweenOut = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
-        tweenOut:Play()
-        tweenOut.Completed:Wait()
-        notif:Destroy()
-    end
-end)
-
-
+    task.delay(notifDuration, function()
+        if notif and notif.Parent then
+            local tweenOut = TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+            tweenOut:Play()
+            tweenOut.Completed:Wait()
+            notif:Destroy()
+        end
+    end)
 end
 
 -- STREAMING_CHUNK:Creating toggle button and main menu frame...
@@ -175,7 +174,7 @@ TitleLabel.Size = UDim2.new(0, 380, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.ZIndex = 2
-TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq —  Вкладка: Фарм"
+TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq —  Вкладка: Троллинг 2"
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 12
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -199,27 +198,27 @@ local isMenuOpen = false
 local toggleMenuKey = Enum.KeyCode.RightControl
 
 local function toggleMenu()
-isMenuOpen = not isMenuOpen
-if isMenuOpen then
-playSound("rbxassetid://9114221317", 0.35, 1.2)
-MainFrame.Visible = true
-MainFrame.Size = UDim2.new(0, 460, 0, 340)
-TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-Size = UDim2.new(0, 520, 0, 380),
-BackgroundTransparency = 0.35
-}):Play()
-sendNotification("Меню открыто")
-else
-playSound("rbxassetid://9114221317", 0.35, 0.75)
-sendNotification("Меню закрыто")
-local tw = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
-Size = UDim2.new(0, 460, 0, 340),
-BackgroundTransparency = 1
-})
-tw:Play()
-tw.Completed:Wait()
-MainFrame.Visible = false
-end
+    isMenuOpen = not isMenuOpen
+    if isMenuOpen then
+        playSound("rbxassetid://9114221317", 0.35, 1.2)
+        MainFrame.Visible = true
+        MainFrame.Size = UDim2.new(0, 460, 0, 340)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 520, 0, 380),
+            BackgroundTransparency = 0.35
+        }):Play()
+        sendNotification("Меню открыто")
+    else
+        playSound("rbxassetid://9114221317", 0.35, 0.75)
+        sendNotification("Меню закрыто")
+        local tw = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 460, 0, 340),
+            BackgroundTransparency = 1
+        })
+        tw:Play()
+        tw.Completed:Wait()
+        MainFrame.Visible = false
+    end
 end
 
 ToggleButton.MouseButton1Click:Connect(toggleMenu)
@@ -240,13 +239,13 @@ SidebarCorner.Parent = Sidebar
 
 local SidebarLayout = Instance.new("UIListLayout")
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-SidebarLayout.Padding = UDim.new(0, 5)
+SidebarLayout.Padding = UDim.new(0, 4)
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 SidebarLayout.Parent = Sidebar
 
 local SidebarPadding = Instance.new("UIPadding")
-SidebarPadding.PaddingTop = UDim.new(0, 6)
+SidebarPadding.PaddingTop = UDim.new(0, 5)
 SidebarPadding.Parent = Sidebar
 
 local PagesContainer = Instance.new("Frame")
@@ -257,104 +256,97 @@ PagesContainer.ZIndex = 2
 PagesContainer.Parent = MainFrame
 
 local Pages = {
-Farm = Instance.new("ScrollingFrame"),
-Troll = Instance.new("ScrollingFrame"),
-Protection = Instance.new("ScrollingFrame"),
-Player = Instance.new("ScrollingFrame"),
-Whitelist = Instance.new("ScrollingFrame"),
-OtherScripts = Instance.new("ScrollingFrame"),
-Settings = Instance.new("ScrollingFrame")
+    Farm = Instance.new("ScrollingFrame"),
+    Troll = Instance.new("ScrollingFrame"),
+    Protection = Instance.new("ScrollingFrame"),
+    Player = Instance.new("ScrollingFrame"),
+    Whitelist = Instance.new("ScrollingFrame"),
+    UserChat = Instance.new("Frame"),
+    OtherScripts = Instance.new("ScrollingFrame"),
+    Settings = Instance.new("ScrollingFrame")
 }
 
 for name, page in pairs(Pages) do
-page.Name = name .. "Page"
-page.Size = UDim2.new(1, 0, 1, 0)
-page.BackgroundTransparency = 1
-page.BorderSizePixel = 0
-page.ZIndex = 2
-page.CanvasSize = UDim2.new(0, 0, 0, 0)
-page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-page.ScrollBarThickness = 4
-page.ScrollBarImageColor3 = Color3.fromRGB(170, 60, 255)
-page.Visible = (name == "Farm")
-page.Parent = PagesContainer
+    page.Name = name .. "Page"
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ZIndex = 2
+    page.Visible = (name == "Farm")
+    page.Parent = PagesContainer
 
-local layout = Instance.new("UIListLayout")
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 8)
-layout.Parent = page
+    if page:IsA("ScrollingFrame") then
+        page.CanvasSize = UDim2.new(0, 0, 0, 0)
+        page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        page.ScrollBarThickness = 4
+        page.ScrollBarImageColor3 = Color3.fromRGB(170, 60, 255)
 
-
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 8)
+        layout.Parent = page
+    end
 end
+
+local ruNames = {
+    Farm = "Троллинг 2",
+    Troll = "Троллинг",
+    Protection = "Защита",
+    Player = "Игрок",
+    Whitelist = "Вайтлист",
+    UserChat = "Чат юзеров",
+    OtherScripts = "Скрипты",
+    Settings = "Настройки"
+}
 
 local tabButtons = {}
 local function switchTab(tabName: string)
-for name, page in pairs(Pages) do
-page.Visible = (name == tabName)
-end
-for name, btn in pairs(tabButtons) do
-if name == tabName then
-btn.BackgroundColor3 = Color3.fromRGB(70, 20, 130)
-btn.BackgroundTransparency = 0.1
-btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-btn.BorderColor3 = Color3.fromRGB(255, 100, 255)
-btn.BorderSizePixel = 2
-else
-btn.BackgroundColor3 = Color3.fromRGB(35, 15, 60)
-btn.BackgroundTransparency = 0.5
-btn.TextColor3 = Color3.fromRGB(200, 160, 230)
-btn.BorderColor3 = Color3.new(0, 0, 0)
-btn.BorderSizePixel = 0
-end
-end
-local ruNames = {
-Farm = "Фарм",
-Troll = "Троллинг",
-Protection = "Защита",
-Player = "Игрок",
-Whitelist = "Вайтлист",
-OtherScripts = "Скрипты",
-Settings = "Настройки"
-}
-TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq  —  Вкладка: " .. (ruNames[tabName] or tabName)
+    for name, page in pairs(Pages) do
+        page.Visible = (name == tabName)
+    end
+    for name, btn in pairs(tabButtons) do
+        if name == tabName then
+            btn.BackgroundColor3 = Color3.fromRGB(70, 20, 130)
+            btn.BackgroundTransparency = 0.1
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+            btn.BorderSizePixel = 2
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(35, 15, 60)
+            btn.BackgroundTransparency = 0.5
+            btn.TextColor3 = Color3.fromRGB(200, 160, 230)
+            btn.BorderColor3 = Color3.new(0, 0, 0)
+            btn.BorderSizePixel = 0
+        end
+    end
+    TitleLabel.Text = "🌪️ Tys Fling Hub v7 by Viq  —  Вкладка: " .. (ruNames[tabName] or tabName)
 end
 
 local function createTabButton(name: string, text: string)
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(1, -12, 0, 31)
-btn.BackgroundColor3 = (name == "Farm") and Color3.fromRGB(70, 20, 130) or Color3.fromRGB(35, 15, 60)
-btn.BackgroundTransparency = (name == "Farm") and 0.1 or 0.5
-btn.BorderColor3 = Color3.fromRGB(255, 100, 255)
-btn.BorderSizePixel = (name == "Farm") and 2 or 0
-btn.ZIndex = 3
-btn.Text = text
-btn.Font = Enum.Font.GothamBold
-btn.TextSize = 10
-btn.TextColor3 = (name == "Farm") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 160, 230)
-btn.Parent = Sidebar
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -12, 0, 28)
+    btn.BackgroundColor3 = (name == "Farm") and Color3.fromRGB(70, 20, 130) or Color3.fromRGB(35, 15, 60)
+    btn.BackgroundTransparency = (name == "Farm") and 0.1 or 0.5
+    btn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+    btn.BorderSizePixel = (name == "Farm") and 2 or 0
+    btn.ZIndex = 3
+    btn.Text = text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 9
+    btn.TextColor3 = (name == "Farm") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 160, 230)
+    btn.Parent = Sidebar
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 6)
-corner.Parent = btn
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
 
-btn.MouseButton1Click:Connect(function()
-    playClickSound()
-    switchTab(name)
-    local ruNames = {
-        Farm = "Троллинг 2", 
-        Troll = "Троллинг", 
-        Protection = "Защита", 
-        Player = "Игрок", 
-        Whitelist = "Вайтлист", 
-        OtherScripts = "Скрипты",
-        Settings = "Настройки"
-    }
-    sendNotification("Вкладка: " .. (ruNames[name] or name))
-end)
+    btn.MouseButton1Click:Connect(function()
+        playClickSound()
+        switchTab(name)
+        sendNotification("Вкладка: " .. (ruNames[name] or name))
+    end)
 
-tabButtons[name] = btn
-
-
+    tabButtons[name] = btn
 end
 
 createTabButton("Farm", "☠️ Троллинг 2")
@@ -362,6 +354,7 @@ createTabButton("Troll", "🌪️ Троллинг")
 createTabButton("Protection", "🛡️ Защита")
 createTabButton("Player", "👤 Игрок")
 createTabButton("Whitelist", "📜 Вайтлист")
+createTabButton("UserChat", "💬 Чат юзеров")
 createTabButton("OtherScripts", "📦 Скрипты")
 createTabButton("Settings", "⚙️ Настройки")
 
@@ -417,185 +410,179 @@ ShiftlockIcon.ImageColor3 = Color3.fromRGB(200, 160, 230)
 ShiftlockIcon.Parent = ShiftlockBtn
 
 local function toggleShiftlock(state: boolean)
-shiftlockEnabled = state
-playToggleSound(shiftlockEnabled)
+    shiftlockEnabled = state
+    playToggleSound(shiftlockEnabled)
 
-if shiftlockEnabled then
-    ShiftlockBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    ShiftlockBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
-    ShiftlockIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🔒 Шифтлок включен")
-    
-    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-    
-    shiftlockConnection = RunService.RenderStepped:Connect(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local root = char.HumanoidRootPart
-            local cam = workspace.CurrentCamera
-            local _, y = cam.CFrame:ToEulerAnglesYXZ()
-            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, y, 0)
-        end
+    if shiftlockEnabled then
+        ShiftlockBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        ShiftlockBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+        ShiftlockIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🔒 Шифтлок включен")
+
         UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-    end)
-else
-    ShiftlockBtn.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
-    ShiftlockBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
-    ShiftlockIcon.ImageColor3 = Color3.fromRGB(200, 160, 230)
-    sendNotification("🔓 Шифтлок выключен")
-    
-    if shiftlockConnection then
-        shiftlockConnection:Disconnect()
-        shiftlockConnection = nil
+
+        shiftlockConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local cam = workspace.CurrentCamera
+                local _, y = cam.CFrame:ToEulerAnglesYXZ()
+                root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, y, 0)
+            end
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        end)
+    else
+        ShiftlockBtn.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
+        ShiftlockBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+        ShiftlockIcon.ImageColor3 = Color3.fromRGB(200, 160, 230)
+        sendNotification("🔓 Шифтлок выключен")
+
+        if shiftlockConnection then
+            shiftlockConnection:Disconnect()
+            shiftlockConnection = nil
+        end
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
     end
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-end
-
-
 end
 
 ShiftlockBtn.MouseButton1Click:Connect(function()
-toggleShiftlock(not shiftlockEnabled)
+    toggleShiftlock(not shiftlockEnabled)
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-if not gameProcessed then
-if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
-if ShiftlockBtn.Visible then
-toggleShiftlock(not shiftlockEnabled)
-end
-elseif input.KeyCode == toggleMenuKey then
-toggleMenu()
-end
-end
+    if not gameProcessed then
+        if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+            if ShiftlockBtn.Visible then
+                toggleShiftlock(not shiftlockEnabled)
+            end
+        elseif input.KeyCode == toggleMenuKey then
+            toggleMenu()
+        end
+    end
 end)
 
 -- STREAMING_CHUNK:Cleanup and hub destruction logic...
 local function destroyHub()
-if flyConnection then flyConnection:Disconnect() end
-if noclipConnection then noclipConnection:Disconnect() end
-if speedConnection then speedConnection:Disconnect() end
-if jumpConnection then jumpConnection:Disconnect() end
-if infJumpConnection then infJumpConnection:Disconnect() end
-if antiFlingConnection then antiFlingConnection:Disconnect() end
-if antiVoidConnection then antiVoidConnection:Disconnect() end
-if clickFlingConnection then clickFlingConnection:Disconnect() end
-if shiftlockConnection then shiftlockConnection:Disconnect() end
-UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    if flyConnection then flyConnection:Disconnect() end
+    if noclipConnection then noclipConnection:Disconnect() end
+    if speedConnection then speedConnection:Disconnect() end
+    if jumpConnection then jumpConnection:Disconnect() end
+    if infJumpConnection then infJumpConnection:Disconnect() end
+    if antiFlingConnection then antiFlingConnection:Disconnect() end
+    if antiVoidConnection then antiVoidConnection:Disconnect() end
+    if clickFlingConnection then clickFlingConnection:Disconnect() end
+    if shiftlockConnection then shiftlockConnection:Disconnect() end
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 
-if FlyControlGui then FlyControlGui:Destroy() end
-if ShiftlockGui then ShiftlockGui:Destroy() end
+    if FlyControlGui then FlyControlGui:Destroy() end
+    if ShiftlockGui then ShiftlockGui:Destroy() end
 
-local char = LocalPlayer.Character
-if char then
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-        hum.WalkSpeed = 16
-        hum.UseJumpPower = true
-        hum.JumpPower = 50
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+            hum.WalkSpeed = 16
+            hum.UseJumpPower = true
+            hum.JumpPower = 50
+        end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = true end
+        end
     end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = true end
-    end
-end
 
-ScreenGui:Destroy()
-
-
+    ScreenGui:Destroy()
 end
 
 local function showDestroyConfirmation()
-if PlayerGui:FindFirstChild("TysConfirmGui") then return end
+    if PlayerGui:FindFirstChild("TysConfirmGui") then return end
 
-local confirmGui = Instance.new("ScreenGui")
-confirmGui.Name = "TysConfirmGui"
-confirmGui.ResetOnSpawn = false
-confirmGui.Parent = PlayerGui
+    local confirmGui = Instance.new("ScreenGui")
+    confirmGui.Name = "TysConfirmGui"
+    confirmGui.ResetOnSpawn = false
+    confirmGui.Parent = PlayerGui
 
-local confirmFrame = Instance.new("Frame")
-confirmFrame.Size = UDim2.new(0, 230, 0, 95)
-confirmFrame.Position = UDim2.new(0.5, -115, 0.5, -47)
-confirmFrame.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
-confirmFrame.BackgroundTransparency = 0.2
-confirmFrame.BorderColor3 = Color3.fromRGB(200, 60, 255)
-confirmFrame.BorderSizePixel = 2
-confirmFrame.ZIndex = 200
-confirmFrame.Parent = confirmGui
+    local confirmFrame = Instance.new("Frame")
+    confirmFrame.Size = UDim2.new(0, 230, 0, 95)
+    confirmFrame.Position = UDim2.new(0.5, -115, 0.5, -47)
+    confirmFrame.BackgroundColor3 = Color3.fromRGB(18, 10, 30)
+    confirmFrame.BackgroundTransparency = 0.2
+    confirmFrame.BorderColor3 = Color3.fromRGB(200, 60, 255)
+    confirmFrame.BorderSizePixel = 2
+    confirmFrame.ZIndex = 200
+    confirmFrame.Parent = confirmGui
 
-local confirmCorner = Instance.new("UICorner")
-confirmCorner.CornerRadius = UDim.new(0, 8)
-confirmCorner.Parent = confirmFrame
+    local confirmCorner = Instance.new("UICorner")
+    confirmCorner.CornerRadius = UDim.new(0, 8)
+    confirmCorner.Parent = confirmFrame
 
-local confirmText = Instance.new("TextLabel")
-confirmText.Size = UDim2.new(1, -16, 0, 36)
-confirmText.Position = UDim2.new(0, 8, 0, 10)
-confirmText.BackgroundTransparency = 1
-confirmText.ZIndex = 201
-confirmText.Text = "⚠️ Закрыть скрипт и отключить все функции?"
-confirmText.Font = Enum.Font.GothamBold
-confirmText.TextSize = 10
-confirmText.TextWrapped = true
-confirmText.TextColor3 = Color3.fromRGB(240, 200, 255)
-confirmText.Parent = confirmFrame
+    local confirmText = Instance.new("TextLabel")
+    confirmText.Size = UDim2.new(1, -16, 0, 36)
+    confirmText.Position = UDim2.new(0, 8, 0, 10)
+    confirmText.BackgroundTransparency = 1
+    confirmText.ZIndex = 201
+    confirmText.Text = "⚠️ Закрыть скрипт и отключить все функции?"
+    confirmText.Font = Enum.Font.GothamBold
+    confirmText.TextSize = 10
+    confirmText.TextWrapped = true
+    confirmText.TextColor3 = Color3.fromRGB(240, 200, 255)
+    confirmText.Parent = confirmFrame
 
-local yesBtn = Instance.new("TextButton")
-yesBtn.Size = UDim2.new(0, 102, 0, 28)
-yesBtn.Position = UDim2.new(0, 8, 1, -36)
-yesBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 50)
-yesBtn.BackgroundTransparency = 0.2
-yesBtn.BorderColor3 = Color3.fromRGB(255, 80, 120)
-yesBtn.BorderSizePixel = 1
-yesBtn.ZIndex = 201
-yesBtn.Text = "Да"
-yesBtn.Font = Enum.Font.GothamBold
-yesBtn.TextSize = 10
-yesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-yesBtn.Parent = confirmFrame
+    local yesBtn = Instance.new("TextButton")
+    yesBtn.Size = UDim2.new(0, 102, 0, 28)
+    yesBtn.Position = UDim2.new(0, 8, 1, -36)
+    yesBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 50)
+    yesBtn.BackgroundTransparency = 0.2
+    yesBtn.BorderColor3 = Color3.fromRGB(255, 80, 120)
+    yesBtn.BorderSizePixel = 1
+    yesBtn.ZIndex = 201
+    yesBtn.Text = "Да"
+    yesBtn.Font = Enum.Font.GothamBold
+    yesBtn.TextSize = 10
+    yesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    yesBtn.Parent = confirmFrame
 
-local yesCorner = Instance.new("UICorner")
-yesCorner.CornerRadius = UDim.new(0, 6)
-yesCorner.Parent = yesBtn
+    local yesCorner = Instance.new("UICorner")
+    yesCorner.CornerRadius = UDim.new(0, 6)
+    yesCorner.Parent = yesBtn
 
-local noBtn = Instance.new("TextButton")
-noBtn.Size = UDim2.new(0, 102, 0, 28)
-noBtn.Position = UDim2.new(1, -110, 1, -36)
-noBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
-noBtn.BackgroundTransparency = 0.2
-noBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
-noBtn.BorderSizePixel = 1
-noBtn.ZIndex = 201
-noBtn.Text = "Отмена"
-noBtn.Font = Enum.Font.GothamBold
-noBtn.TextSize = 10
-noBtn.TextColor3 = Color3.fromRGB(210, 170, 255)
-noBtn.Parent = confirmFrame
+    local noBtn = Instance.new("TextButton")
+    noBtn.Size = UDim2.new(0, 102, 0, 28)
+    noBtn.Position = UDim2.new(1, -110, 1, -36)
+    noBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+    noBtn.BackgroundTransparency = 0.2
+    noBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+    noBtn.BorderSizePixel = 1
+    noBtn.ZIndex = 201
+    noBtn.Text = "Отмена"
+    noBtn.Font = Enum.Font.GothamBold
+    noBtn.TextSize = 10
+    noBtn.TextColor3 = Color3.fromRGB(210, 170, 255)
+    noBtn.Parent = confirmFrame
 
-local noCorner = Instance.new("UICorner")
-noCorner.CornerRadius = UDim.new(0, 6)
-noCorner.Parent = noBtn
+    local noCorner = Instance.new("UICorner")
+    noCorner.CornerRadius = UDim.new(0, 6)
+    noCorner.Parent = noBtn
 
-yesBtn.MouseButton1Click:Connect(function()
-    playClickSound()
-    confirmGui:Destroy()
-    destroyHub()
-end)
+    yesBtn.MouseButton1Click:Connect(function()
+        playClickSound()
+        confirmGui:Destroy()
+        destroyHub()
+    end)
 
-noBtn.MouseButton1Click:Connect(function()
-    playClickSound()
-    confirmGui:Destroy()
-end)
-
-
+    noBtn.MouseButton1Click:Connect(function()
+        playClickSound()
+        confirmGui:Destroy()
+    end)
 end
 
 CloseBtn.MouseButton1Click:Connect(function()
-playClickSound()
-showDestroyConfirmation()
+    playClickSound()
+    showDestroyConfirmation()
 end)
 
 -- ==============================================================================
--- Полная вкладка Фарм (Tys client)
+-- Полная вкладка Фарм (Троллинг 2)
 -- ==============================================================================
 local FarmPage = Pages.Farm
 
@@ -668,7 +655,7 @@ local function refreshFarmPlayerList()
             pRow.BackgroundTransparency = 1
             pRow.ZIndex = 4
             pRow.Parent = FarmPlayersScrolling
-            
+
             local pBtn = Instance.new("TextButton")
             pBtn.Size = UDim2.new(1, -78, 1, 0)
             pBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -683,11 +670,11 @@ local function refreshFarmPlayerList()
             pBtn.TextXAlignment = Enum.TextXAlignment.Left
             pBtn.TextColor3 = (selectedFarmTarget == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(210, 170, 255)
             pBtn.Parent = pRow
-            
+
             local pCorner = Instance.new("UICorner")
             pCorner.CornerRadius = UDim.new(0, 4)
             pCorner.Parent = pBtn
-            
+
             local tpBtn = Instance.new("TextButton")
             tpBtn.Size = UDim2.new(0, 32, 1, 0)
             tpBtn.Position = UDim2.new(1, -74, 0, 0)
@@ -701,11 +688,11 @@ local function refreshFarmPlayerList()
             tpBtn.TextSize = 9
             tpBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
             tpBtn.Parent = pRow
-            
+
             local tpCorner = Instance.new("UICorner")
             tpCorner.CornerRadius = UDim.new(0, 4)
             tpCorner.Parent = tpBtn
-            
+
             local viewBtn = Instance.new("TextButton")
             viewBtn.Size = UDim2.new(0, 38, 1, 0)
             viewBtn.Position = UDim2.new(1, -38, 0, 0)
@@ -719,13 +706,13 @@ local function refreshFarmPlayerList()
             viewBtn.TextSize = 8
             viewBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
             viewBtn.Parent = pRow
-            
+
             local viewCorner = Instance.new("UICorner")
             viewCorner.CornerRadius = UDim.new(0, 4)
             viewCorner.Parent = viewBtn
-            
+
             farmPlayerRowsTable[player] = {Container = pRow, TargetBtn = pBtn, TpBtn = tpBtn, ViewBtn = viewBtn}
-            
+
             tpBtn.MouseButton1Click:Connect(function()
                 playClickSound()
                 local char = LocalPlayer.Character
@@ -737,7 +724,7 @@ local function refreshFarmPlayerList()
                     sendNotification("⚠️ Не удалось телепортироваться к " .. player.Name)
                 end
             end)
-            
+
             viewBtn.MouseButton1Click:Connect(function()
                 playClickSound()
                 if farmViewingTarget == player then
@@ -764,7 +751,7 @@ local function refreshFarmPlayerList()
                     sendNotification("Просмотр игрока: " .. player.Name)
                 end
             end)
-            
+
             pBtn.MouseButton1Click:Connect(function()
                 playClickSound()
                 selectedFarmTarget = player
@@ -824,7 +811,7 @@ FarmRefreshBtn.MouseButton1Click:Connect(function()
     sendNotification("🔄 Список игроков обновлен!")
 end)
 
--- Логика бесконечного килла с авто-ударом инструмента и свободной мышкой
+-- Логика бесконечного килла
 local infiniteKillEnabled = false
 local infiniteKillConnection = nil
 local attackLoopTask = nil
@@ -905,13 +892,13 @@ KillActionBtn.MouseButton1Click:Connect(function()
                 sendNotification("⚠️ Цель вышла из игры или пропала. Возврат...")
                 stopInfiniteKill()
                 noclipConn:Disconnect()
-                
+
                 if char and root and hum and hum.Health > 0 then
                     root.AssemblyLinearVelocity = Vector3.zero
                     root.AssemblyAngularVelocity = Vector3.zero
                     root.CFrame = originalCFrame
                 end
-                
+
                 KillActionBtn.Text = "⚔️ КИЛЛ ЦЕЛИ: ВЫКЛ"
                 KillActionBtn.BackgroundColor3 = Color3.fromRGB(150, 20, 60)
                 return
@@ -946,11 +933,11 @@ KillActionBtn.MouseButton1Click:Connect(function()
     else
         stopInfiniteKill()
         sendNotification("🛑Килл выключен. Возврат на точку.")
-        
+
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
+
         if char and root and hum and hum.Health > 0 then
             root.AssemblyLinearVelocity = Vector3.zero
             root.AssemblyAngularVelocity = Vector3.zero
@@ -961,7 +948,7 @@ KillActionBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Логика Орбит Килла (вращение вокруг цели с возвратом на точку на 2 секунды при выключении)
+-- Логика Орбит Килла
 local orbitKillEnabled = false
 local orbitKillConnection = nil
 local orbitAttackTask = nil
@@ -1043,7 +1030,7 @@ local function startOrbitKillProcess()
             sendNotification("⚠️ Цель вышла из игры. Остановка орбиты...")
             stopOrbitKill()
             noclipConn:Disconnect()
-            
+
             if char and root and hum and hum.Health > 0 then
                 local startTime = tick()
                 while tick() - startTime < 2 do
@@ -1055,7 +1042,7 @@ local function startOrbitKillProcess()
                     task.renderStepped:Wait()
                 end
             end
-            
+
             OrbitActionBtn.Text = "🪐 ОРБИТ КИЛЛ: ВЫКЛ"
             OrbitActionBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 160)
             return
@@ -1067,13 +1054,13 @@ local function startOrbitKillProcess()
 
         if targetRoot and targetHum and targetHum.Health > 0 then
             angle = angle + (orbitSpeed * dt)
-            
+
             local offsetX = math.cos(angle) * orbitRadius
             local offsetZ = math.sin(angle) * orbitRadius
-            
+
             local targetPos = targetRoot.Position
             local newPosition = targetPos + Vector3.new(offsetX, 2, offsetZ)
-            
+
             root.CFrame = CFrame.new(newPosition, targetPos)
             root.AssemblyLinearVelocity = Vector3.zero
             root.AssemblyAngularVelocity = Vector3.zero
@@ -1099,11 +1086,11 @@ end
 local function stopOrbitKillProcess()
     stopOrbitKill()
     sendNotification("🛑 Орбит килл выключен. Возврат на точку на 2 сек.")
-    
+
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    
+
     if char and root and hum and hum.Health > 0 then
         task.spawn(function()
             local startTime = tick()
@@ -1131,8 +1118,7 @@ OrbitActionBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Логика Орбит Килл Клик (нажатие на игрока в мире для орбиты)
--- Логика Орбит Килл Клик (поддержка ПК клика и мобильного тапа по экрану)
+-- Логика Орбит Килл Клик (ПК мышь + Телефон сенсор)
 local orbitClickEnabled = false
 local orbitClickConnection = nil
 
@@ -1160,54 +1146,40 @@ OrbitClickBtn.MouseButton1Click:Connect(function()
     if orbitClickEnabled then
         OrbitClickBtn.Text = "🖱️/📱 ОРБИТ КИЛЛ КЛИК: ВКЛ"
         OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(50, 15, 90)
-        sendNotification("🎯 Нажмите/тапните по любому игроку в мире!")
+        sendNotification("🎯 Нажмите или тапните по игроку для Орбит Килла!")
 
         orbitClickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed then return end
-            
-            -- Поддержка клика мышью (ПК) и касания пальцем (Телефон/Планшет)
             local isMouse = (input.UserInputType == Enum.UserInputType.MouseButton1)
             local isTouch = (input.UserInputType == Enum.UserInputType.Touch)
 
             if isMouse or isTouch then
                 local hitPart = nil
-
                 if isTouch then
-                    -- Для сенсорных экранов пускаем луч из координат пальца
                     local unitRay = Camera:ViewportPointToRay(input.Position.X, input.Position.Y)
                     local raycastParams = RaycastParams.new()
                     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-                    
                     if LocalPlayer.Character then
                         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
                     end
-                    
                     local rayResult = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
-                    if rayResult then
-                        hitPart = rayResult.Instance
-                    end
+                    if rayResult then hitPart = rayResult.Instance end
                 else
-                    -- Для мыши берем текущий Mouse.Target
                     local mouse = LocalPlayer:GetMouse()
                     hitPart = mouse.Target
                 end
 
                 if hitPart and hitPart.Parent then
-                    -- Поиск игрока вверх по иерархии деталей модели
                     local character = hitPart.Parent
                     local clickedPlayer = Players:GetPlayerFromCharacter(character)
-
                     if not clickedPlayer and character.Parent then
                         clickedPlayer = Players:GetPlayerFromCharacter(character.Parent)
                     end
 
                     if clickedPlayer and clickedPlayer ~= LocalPlayer then
                         selectedFarmTarget = clickedPlayer
-                        sendNotification("🎯 Выбрана цель тапом: " .. clickedPlayer.Name)
-
-                        if orbitKillEnabled then
-                            stopOrbitKill()
-                        end
+                        sendNotification("🎯 Цель выбрана: " .. clickedPlayer.Name)
+                        if orbitKillEnabled then stopOrbitKill() end
                         startOrbitKillProcess()
                     end
                 end
@@ -1220,9 +1192,10 @@ OrbitClickBtn.MouseButton1Click:Connect(function()
             orbitClickConnection:Disconnect()
             orbitClickConnection = nil
         end
-        sendNotification("🛑 Орбит килл клик/тап выключен.")
+        sendNotification("🛑 Орбит килл клик выключен.")
     end
 end)
+
 -- ==============================================================================
 -- Вкладка Троллинг
 -- ==============================================================================
@@ -1272,153 +1245,151 @@ local viewingTarget: Player? = nil
 local playerRowsTable = {}
 
 local function refreshPlayerList()
-for _, child in ipairs(PlayersScrolling:GetChildren()) do
-if child:IsA("Frame") then
-child:Destroy()
-end
-end
-table.clear(playerRowsTable)
+    for _, child in ipairs(PlayersScrolling:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    table.clear(playerRowsTable)
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        local pRow = Instance.new("Frame")
-        pRow.Size = UDim2.new(1, -8, 0, 30)
-        pRow.BackgroundTransparency = 1
-        pRow.ZIndex = 4
-        pRow.Parent = PlayersScrolling
-        
-        local pBtn = Instance.new("TextButton")
-        pBtn.Size = UDim2.new(1, -78, 1, 0)
-        pBtn.Position = UDim2.new(0, 0, 0, 0)
-        pBtn.BackgroundColor3 = (selectedTarget == player) and Color3.fromRGB(70, 20, 130) or Color3.fromRGB(40, 20, 70)
-        pBtn.BackgroundTransparency = (selectedTarget == player) and 0.1 or 0.5
-        pBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
-        pBtn.BorderSizePixel = (selectedTarget == player) and 2 or 0
-        pBtn.ZIndex = 4
-        pBtn.Text = "  " .. player.Name .. " (@" .. player.DisplayName .. ")"
-        pBtn.Font = (selectedTarget == player) and Enum.Font.GothamBold or Enum.Font.GothamMedium
-        pBtn.TextSize = 10
-        pBtn.TextXAlignment = Enum.TextXAlignment.Left
-        pBtn.TextColor3 = (selectedTarget == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(210, 170, 255)
-        pBtn.Parent = pRow
-        
-        local pCorner = Instance.new("UICorner")
-        pCorner.CornerRadius = UDim.new(0, 4)
-        pCorner.Parent = pBtn
-        
-        local tpBtn = Instance.new("TextButton")
-        tpBtn.Size = UDim2.new(0, 32, 1, 0)
-        tpBtn.Position = UDim2.new(1, -74, 0, 0)
-        tpBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
-        tpBtn.BackgroundTransparency = 0.3
-        tpBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
-        tpBtn.BorderSizePixel = 1
-        tpBtn.ZIndex = 5
-        tpBtn.Text = "ТП"
-        tpBtn.Font = Enum.Font.GothamBold
-        tpBtn.TextSize = 9
-        tpBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
-        tpBtn.Parent = pRow
-        
-        local tpCorner = Instance.new("UICorner")
-        tpCorner.CornerRadius = UDim.new(0, 4)
-        tpCorner.Parent = tpBtn
-        
-        local viewBtn = Instance.new("TextButton")
-        viewBtn.Size = UDim2.new(0, 38, 1, 0)
-        viewBtn.Position = UDim2.new(1, -38, 0, 0)
-        viewBtn.BackgroundColor3 = (viewingTarget == player) and Color3.fromRGB(120, 30, 80) or Color3.fromRGB(50, 20, 80)
-        viewBtn.BackgroundTransparency = (viewingTarget == player) and 0.1 or 0.3
-        viewBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
-        viewBtn.BorderSizePixel = (viewingTarget == player) and 2 or 1
-        viewBtn.ZIndex = 5
-        viewBtn.Text = "СМОТР"
-        viewBtn.Font = Enum.Font.GothamBold
-        viewBtn.TextSize = 8
-        viewBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
-        viewBtn.Parent = pRow
-        
-        local viewCorner = Instance.new("UICorner")
-        viewCorner.CornerRadius = UDim.new(0, 4)
-        viewCorner.Parent = viewBtn
-        
-        playerRowsTable[player] = {Container = pRow, TargetBtn = pBtn, TpBtn = tpBtn, ViewBtn = viewBtn}
-        
-        tpBtn.MouseButton1Click:Connect(function()
-            playClickSound()
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                root.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-                sendNotification("Телепортация к " .. player.Name)
-            else
-                sendNotification("⚠️ Не удалось телепортироваться к " .. player.Name)
-            end
-        end)
-        
-        viewBtn.MouseButton1Click:Connect(function()
-            playClickSound()
-            if viewingTarget == player then
-                viewingTarget = nil
-                viewBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
-                viewBtn.BackgroundTransparency = 0.3
-                viewBtn.BorderSizePixel = 1
-                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                if hum then Camera.CameraSubject = hum end
-                sendNotification("Просмотр завершен")
-            else
-                viewingTarget = player
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local pRow = Instance.new("Frame")
+            pRow.Size = UDim2.new(1, -8, 0, 30)
+            pRow.BackgroundTransparency = 1
+            pRow.ZIndex = 4
+            pRow.Parent = PlayersScrolling
+
+            local pBtn = Instance.new("TextButton")
+            pBtn.Size = UDim2.new(1, -78, 1, 0)
+            pBtn.Position = UDim2.new(0, 0, 0, 0)
+            pBtn.BackgroundColor3 = (selectedTarget == player) and Color3.fromRGB(70, 20, 130) or Color3.fromRGB(40, 20, 70)
+            pBtn.BackgroundTransparency = (selectedTarget == player) and 0.1 or 0.5
+            pBtn.BorderColor3 = Color3.fromRGB(255, 100, 255)
+            pBtn.BorderSizePixel = (selectedTarget == player) and 2 or 0
+            pBtn.ZIndex = 4
+            pBtn.Text = "  " .. player.Name .. " (@" .. player.DisplayName .. ")"
+            pBtn.Font = (selectedTarget == player) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+            pBtn.TextSize = 10
+            pBtn.TextXAlignment = Enum.TextXAlignment.Left
+            pBtn.TextColor3 = (selectedTarget == player) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(210, 170, 255)
+            pBtn.Parent = pRow
+
+            local pCorner = Instance.new("UICorner")
+            pCorner.CornerRadius = UDim.new(0, 4)
+            pCorner.Parent = pBtn
+
+            local tpBtn = Instance.new("TextButton")
+            tpBtn.Size = UDim2.new(0, 32, 1, 0)
+            tpBtn.Position = UDim2.new(1, -74, 0, 0)
+            tpBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
+            tpBtn.BackgroundTransparency = 0.3
+            tpBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
+            tpBtn.BorderSizePixel = 1
+            tpBtn.ZIndex = 5
+            tpBtn.Text = "ТП"
+            tpBtn.Font = Enum.Font.GothamBold
+            tpBtn.TextSize = 9
+            tpBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
+            tpBtn.Parent = pRow
+
+            local tpCorner = Instance.new("UICorner")
+            tpCorner.CornerRadius = UDim.new(0, 4)
+            tpCorner.Parent = tpBtn
+
+            local viewBtn = Instance.new("TextButton")
+            viewBtn.Size = UDim2.new(0, 38, 1, 0)
+            viewBtn.Position = UDim2.new(1, -38, 0, 0)
+            viewBtn.BackgroundColor3 = (viewingTarget == player) and Color3.fromRGB(120, 30, 80) or Color3.fromRGB(50, 20, 80)
+            viewBtn.BackgroundTransparency = (viewingTarget == player) and 0.1 or 0.3
+            viewBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
+            viewBtn.BorderSizePixel = (viewingTarget == player) and 2 or 1
+            viewBtn.ZIndex = 5
+            viewBtn.Text = "СМОТР"
+            viewBtn.Font = Enum.Font.GothamBold
+            viewBtn.TextSize = 8
+            viewBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
+            viewBtn.Parent = pRow
+
+            local viewCorner = Instance.new("UICorner")
+            viewCorner.CornerRadius = UDim.new(0, 4)
+            viewCorner.Parent = viewBtn
+
+            playerRowsTable[player] = {Container = pRow, TargetBtn = pBtn, TpBtn = tpBtn, ViewBtn = viewBtn}
+
+            tpBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                local char = LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    root.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                    sendNotification("Телепортация к " .. player.Name)
+                else
+                    sendNotification("⚠️ Не удалось телепортироваться к " .. player.Name)
+                end
+            end)
+
+            viewBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                if viewingTarget == player then
+                    viewingTarget = nil
+                    viewBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
+                    viewBtn.BackgroundTransparency = 0.3
+                    viewBtn.BorderSizePixel = 1
+                    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if hum then Camera.CameraSubject = hum end
+                    sendNotification("Просмотр завершен")
+                else
+                    viewingTarget = player
+                    for plr, data in pairs(playerRowsTable) do
+                        if plr == viewingTarget then
+                            data.ViewBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 80)
+                            data.ViewBtn.BackgroundTransparency = 0.1
+                            data.ViewBtn.BorderSizePixel = 2
+                        else
+                            data.ViewBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
+                            data.ViewBtn.BackgroundTransparency = 0.3
+                            data.ViewBtn.BorderSizePixel = 1
+                        end
+                    end
+                    sendNotification("Просмотр игрока: " .. player.Name)
+                end
+            end)
+
+            pBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                selectedTarget = player
                 for plr, data in pairs(playerRowsTable) do
-                    if plr == viewingTarget then
-                        data.ViewBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 80)
-                        data.ViewBtn.BackgroundTransparency = 0.1
-                        data.ViewBtn.BorderSizePixel = 2
+                    if plr == selectedTarget then
+                        data.TargetBtn.BorderSizePixel = 2
+                        data.TargetBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 130)
+                        data.TargetBtn.BackgroundTransparency = 0.1
+                        data.TargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        data.TargetBtn.Font = Enum.Font.GothamBold
                     else
-                        data.ViewBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 80)
-                        data.ViewBtn.BackgroundTransparency = 0.3
-                        data.ViewBtn.BorderSizePixel = 1
+                        data.TargetBtn.BorderSizePixel = 0
+                        data.TargetBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+                        data.TargetBtn.BackgroundTransparency = 0.5
+                        data.TargetBtn.TextColor3 = Color3.fromRGB(210, 170, 255)
+                        data.TargetBtn.Font = Enum.Font.GothamMedium
                     end
                 end
-                sendNotification("Просмотр игрока: " .. player.Name)
-            end
-        end)
-        
-        pBtn.MouseButton1Click:Connect(function()
-            playClickSound()
-            selectedTarget = player
-            for plr, data in pairs(playerRowsTable) do
-                if plr == selectedTarget then
-                    data.TargetBtn.BorderSizePixel = 2
-                    data.TargetBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 130)
-                    data.TargetBtn.BackgroundTransparency = 0.1
-                    data.TargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    data.TargetBtn.Font = Enum.Font.GothamBold
-                else
-                    data.TargetBtn.BorderSizePixel = 0
-                    data.TargetBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
-                    data.TargetBtn.BackgroundTransparency = 0.5
-                    data.TargetBtn.TextColor3 = Color3.fromRGB(210, 170, 255)
-                    data.TargetBtn.Font = Enum.Font.GothamMedium
-                end
-            end
-            sendNotification("Цель выбрана: " .. player.Name)
-        end)
+                sendNotification("Цель выбрана: " .. player.Name)
+            end)
+        end
     end
-end
-
-
 end
 
 refreshPlayerList()
 Players.PlayerAdded:Connect(refreshPlayerList)
 Players.PlayerRemoving:Connect(function(player)
-if selectedTarget == player then selectedTarget = nil end
-if viewingTarget == player then
-viewingTarget = nil
-local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-if hum then Camera.CameraSubject = hum end
-end
-refreshPlayerList()
+    if selectedTarget == player then selectedTarget = nil end
+    if viewingTarget == player then
+        viewingTarget = nil
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then Camera.CameraSubject = hum end
+    end
+    refreshPlayerList()
 end)
 
 local RefreshBtn = Instance.new("TextButton")
@@ -1439,58 +1410,56 @@ RefreshCorner.CornerRadius = UDim.new(0, 6)
 RefreshCorner.Parent = RefreshBtn
 
 RefreshBtn.MouseButton1Click:Connect(function()
-playClickSound()
-refreshPlayerList()
-sendNotification("🔄 Список игроков обновлен!")
+    playClickSound()
+    refreshPlayerList()
+    sendNotification("🔄 Список игроков обновлен!")
 end)
 
 local isFlinging = false
 local function performFling(target: Player, duration: number?)
-if isFlinging then return end
-local char = LocalPlayer.Character
-local root = char and char:FindFirstChild("HumanoidRootPart")
-local hum = char and char:FindFirstChildOfClass("Humanoid")
-if not root or not hum or hum.Health <= 0 then return end
-if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+    if isFlinging then return end
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum or hum.Health <= 0 then return end
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
 
-isFlinging = true
-local flingDuration = duration or 10
-local startCFrame = root.CFrame
+    isFlinging = true
+    local flingDuration = duration or 10
+    local startCFrame = root.CFrame
 
-local noclipConn = RunService.Stepped:Connect(function()
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+    local noclipConn = RunService.Stepped:Connect(function()
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
         end
+    end)
+
+    local startTime = os.clock()
+    while os.clock() - startTime < flingDuration do
+        if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then break end
+        if not char or not root or not hum or hum.Health <= 0 then break end
+
+        local targetRoot = target.Character.HumanoidRootPart
+        local angle = (os.clock() * 50) % (math.pi * 2)
+        local offset = Vector3.new(math.cos(angle) * 3, 0, math.sin(angle) * 3)
+
+        root.CFrame = targetRoot.CFrame + offset
+        root.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+        root.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
+        task.wait()
     end
-end)
 
-local startTime = os.clock()
-while os.clock() - startTime < flingDuration do
-    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then break end
-    if not char or not root or not hum or hum.Health <= 0 then break end
-    
-    local targetRoot = target.Character.HumanoidRootPart
-    local angle = (os.clock() * 50) % (math.pi * 2)
-    local offset = Vector3.new(math.cos(angle) * 3, 0, math.sin(angle) * 3)
-    
-    root.CFrame = targetRoot.CFrame + offset
-    root.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-    root.AssemblyAngularVelocity = Vector3.new(99999, 99999, 99999)
-    task.wait()
-end
-
-noclipConn:Disconnect()
-if root and hum and hum.Health > 0 then
-    root.AssemblyLinearVelocity = Vector3.zero
-    root.AssemblyAngularVelocity = Vector3.zero
-    root.CFrame = startCFrame
-    root.AssemblyLinearVelocity = Vector3.zero
-    root.AssemblyAngularVelocity = Vector3.zero
-end
-isFlinging = false
-
-
+    noclipConn:Disconnect()
+    if root and hum and hum.Health > 0 then
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        root.CFrame = startCFrame
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+    end
+    isFlinging = false
 end
 
 local FlingActionBtn = Instance.new("TextButton")
@@ -1511,27 +1480,27 @@ FlingBtnCorner.CornerRadius = UDim.new(0, 6)
 FlingBtnCorner.Parent = FlingActionBtn
 
 FlingActionBtn.MouseButton1Click:Connect(function()
-if isFlinging then
-sendNotification("⚠️ Флинг уже выполняется!")
-return
-end
-if not selectedTarget then
-sendNotification("⚠️ Сначала выберите цель из списка!")
-return
-end
-local char = LocalPlayer.Character
-local root = char and char:FindFirstChild("HumanoidRootPart")
-local hum = char and char:FindFirstChildOfClass("Humanoid")
-if not root or not hum then
-sendNotification("⚠️ Ваш персонаж не загружен!")
-return
-end
-sendNotification("🌪️ Флинг игрока " .. selectedTarget.Name .. "...")
-playToggleSound(true)
-task.spawn(function()
-performFling(selectedTarget, 10)
-sendNotification("✅ Возврат на исходную позицию!")
-end)
+    if isFlinging then
+        sendNotification("⚠️ Флинг уже выполняется!")
+        return
+    end
+    if not selectedTarget then
+        sendNotification("⚠️ Сначала выберите цель из списка!")
+        return
+    end
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then
+        sendNotification("⚠️ Ваш персонаж не загружен!")
+        return
+    end
+    sendNotification("🌪️ Флинг игрока " .. selectedTarget.Name .. "...")
+    playToggleSound(true)
+    task.spawn(function()
+        performFling(selectedTarget, 10)
+        sendNotification("✅ Возврат на исходную позицию!")
+    end)
 end)
 
 local ClickFlingToggleBtn = Instance.new("TextButton")
@@ -1552,55 +1521,53 @@ ClickFlingCorner.CornerRadius = UDim.new(0, 6)
 ClickFlingCorner.Parent = ClickFlingToggleBtn
 
 ClickFlingToggleBtn.MouseButton1Click:Connect(function()
-clickFlingEnabled = not clickFlingEnabled
-playToggleSound(clickFlingEnabled)
+    clickFlingEnabled = not clickFlingEnabled
+    playToggleSound(clickFlingEnabled)
 
-if clickFlingEnabled then
-    ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВКЛ"
-    ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🪄 Клик-флинг активирован! Нажмите на игрока.")
-    
-    clickFlingConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if gameProcessed then return end
-            local mouse = LocalPlayer:GetMouse()
-            local targetPart = mouse.Target
-            if targetPart then
-                local character = targetPart.Parent
-                local targetPlayer = Players:GetPlayerFromCharacter(character)
-                if not targetPlayer and character.Parent then
-                    targetPlayer = Players:GetPlayerFromCharacter(character.Parent)
-                end
-                
-                if targetPlayer and targetPlayer ~= LocalPlayer then
-                    if isFlinging then
-                        sendNotification("⚠️ Флинг уже выполняется!")
-                        return
+    if clickFlingEnabled then
+        ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВКЛ"
+        ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🪄 Клик-флинг активирован! Нажмите на игрока.")
+
+        clickFlingConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if gameProcessed then return end
+                local mouse = LocalPlayer:GetMouse()
+                local targetPart = mouse.Target
+                if targetPart then
+                    local character = targetPart.Parent
+                    local targetPlayer = Players:GetPlayerFromCharacter(character)
+                    if not targetPlayer and character.Parent then
+                        targetPlayer = Players:GetPlayerFromCharacter(character.Parent)
                     end
-                    sendNotification("🪄 Клик-флинг игрока: " .. targetPlayer.Name)
-                    task.spawn(function()
-                        performFling(targetPlayer, 8)
-                    end)
+
+                    if targetPlayer and targetPlayer ~= LocalPlayer then
+                        if isFlinging then
+                            sendNotification("⚠️ Флинг уже выполняется!")
+                            return
+                        end
+                        sendNotification("🪄 Клик-флинг игрока: " .. targetPlayer.Name)
+                        task.spawn(function()
+                            performFling(targetPlayer, 8)
+                        end)
+                    end
                 end
             end
+        end)
+    else
+        ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВЫКЛ"
+        ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🪄 Клик-флинг выключен!")
+
+        if clickFlingConnection then
+            clickFlingConnection:Disconnect()
+            clickFlingConnection = nil
         end
-    end)
-else
-    ClickFlingToggleBtn.Text = "🪄 КЛИК-ФЛИНГ: ВЫКЛ"
-    ClickFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    ClickFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    ClickFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🪄 Клик-флинг выключен!")
-    
-    if clickFlingConnection then
-        clickFlingConnection:Disconnect()
-        clickFlingConnection = nil
     end
-end
-
-
 end)
 
 -- ==============================================================================
@@ -1609,24 +1576,24 @@ end)
 local ProtectionPage = Pages.Protection
 
 local function getNearestPlayer(): Player?
-local char = LocalPlayer.Character
-local root = char and char:FindFirstChild("HumanoidRootPart")
-if not root then return nil end
-local nearestDist = math.huge
-local nearestPlayer = nil
-for _, player in ipairs(Players:GetPlayers()) do
-if player ~= LocalPlayer and not whitelistedPlayers[player] and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-local enemyHum = player.Character:FindFirstChildOfClass("Humanoid")
-if enemyHum and enemyHum.Health > 0 then
-local dist = (player.Character.HumanoidRootPart.Position - root.Position).Magnitude
-if dist < nearestDist then
-nearestDist = dist
-nearestPlayer = player
-end
-end
-end
-end
-return nearestPlayer
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local nearestDist = math.huge
+    local nearestPlayer = nil
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and not whitelistedPlayers[player] and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local enemyHum = player.Character:FindFirstChildOfClass("Humanoid")
+            if enemyHum and enemyHum.Health > 0 then
+                local dist = (player.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestPlayer = player
+                end
+            end
+        end
+    end
+    return nearestPlayer
 end
 
 local AutoFlingToggleBtn = Instance.new("TextButton")
@@ -1647,53 +1614,53 @@ AutoFlingCorner.CornerRadius = UDim.new(0, 6)
 AutoFlingCorner.Parent = AutoFlingToggleBtn
 
 AutoFlingToggleBtn.MouseButton1Click:Connect(function()
-flingOnDamageEnabled = not flingOnDamageEnabled
-playToggleSound(flingOnDamageEnabled)
-if flingOnDamageEnabled then
-AutoFlingToggleBtn.Text = "🛡️ ФЛИНГ ПРИ УРОНЕ: ВКЛ"
-AutoFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 60)
-AutoFlingToggleBtn.BorderColor3 = Color3.fromRGB(255, 80, 120)
-AutoFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-sendNotification("🛡️ Флинг при уроне включен!")
-else
-AutoFlingToggleBtn.Text = "🛡️ ФЛИНГ ПРИ УРОНЕ: ВЫКЛ"
-AutoFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-AutoFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-AutoFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-sendNotification("🛡️ Флинг при уроне выключен!")
-end
+    flingOnDamageEnabled = not flingOnDamageEnabled
+    playToggleSound(flingOnDamageEnabled)
+    if flingOnDamageEnabled then
+        AutoFlingToggleBtn.Text = "🛡️ ФЛИНГ ПРИ УРОНЕ: ВКЛ"
+        AutoFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 60)
+        AutoFlingToggleBtn.BorderColor3 = Color3.fromRGB(255, 80, 120)
+        AutoFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🛡️ Флинг при уроне включен!")
+    else
+        AutoFlingToggleBtn.Text = "🛡️ ФЛИНГ ПРИ УРОНЕ: ВЫКЛ"
+        AutoFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        AutoFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        AutoFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🛡️ Флинг при уроне выключен!")
+    end
 end)
 
 local function setupDamageDetection(character: Model)
-local humanoid = character:WaitForChild("Humanoid", 5)
-if not humanoid then return end
-local lastHealth = humanoid.Health
-humanoid.HealthChanged:Connect(function(newHealth)
-if flingOnDamageEnabled and newHealth < lastHealth and newHealth > 0 and not isFlinging then
-local enemy = getNearestPlayer()
-if enemy then
-sendNotification("⚠️ Получен урон! Авто-флинг игрока " .. enemy.Name .. "...")
-task.spawn(function()
-performFling(enemy, 4)
-end)
-end
-end
-lastHealth = newHealth
-end)
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if not humanoid then return end
+    local lastHealth = humanoid.Health
+    humanoid.HealthChanged:Connect(function(newHealth)
+        if flingOnDamageEnabled and newHealth < lastHealth and newHealth > 0 and not isFlinging then
+            local enemy = getNearestPlayer()
+            if enemy then
+                sendNotification("⚠️ Получен урон! Авто-флинг игрока " .. enemy.Name .. "...")
+                task.spawn(function()
+                    performFling(enemy, 4)
+                end)
+            end
+        end
+        lastHealth = newHealth
+    end)
 end
 
 if LocalPlayer.Character then
-setupDamageDetection(LocalPlayer.Character)
+    setupDamageDetection(LocalPlayer.Character)
 end
 LocalPlayer.CharacterAdded:Connect(setupDamageDetection)
 
 local function applyAntiFlingToCharacter(char: Model)
-for _, part in ipairs(char:GetDescendants()) do
-if part:IsA("BasePart") then
-part.CanCollide = false
-part.Transparency = 0.5
-end
-end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            part.Transparency = 0.5
+        end
+    end
 end
 
 local AntiFlingToggleBtn = Instance.new("TextButton")
@@ -1714,48 +1681,46 @@ AntiFlingCorner.CornerRadius = UDim.new(0, 6)
 AntiFlingCorner.Parent = AntiFlingToggleBtn
 
 AntiFlingToggleBtn.MouseButton1Click:Connect(function()
-antiFlingEnabled = not antiFlingEnabled
-playToggleSound(antiFlingEnabled)
+    antiFlingEnabled = not antiFlingEnabled
+    playToggleSound(antiFlingEnabled)
 
-if antiFlingEnabled then
-    AntiFlingToggleBtn.Text = "🛡️ АНТИ-ФЛИНГ: ВКЛ"
-    AntiFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    AntiFlingToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    AntiFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🛡️ Анти-флинг включен!")
-    
-    antiFlingConnection = RunService.Stepped:Connect(function()
+    if antiFlingEnabled then
+        AntiFlingToggleBtn.Text = "🛡️ АНТИ-ФЛИНГ: ВКЛ"
+        AntiFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        AntiFlingToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        AntiFlingToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🛡️ Анти-флинг включен!")
+
+        antiFlingConnection = RunService.Stepped:Connect(function()
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    applyAntiFlingToCharacter(player.Character)
+                end
+            end
+        end)
+    else
+        AntiFlingToggleBtn.Text = "🛡️ АНТИ-ФЛИНГ: ВЫКЛ"
+        AntiFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        AntiFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        AntiFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🛡️ Анти-флинг выключен!")
+
+        if antiFlingConnection then
+            antiFlingConnection:Disconnect()
+            antiFlingConnection = nil
+        end
+
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character then
-                applyAntiFlingToCharacter(player.Character)
-            end
-        end
-    end)
-else
-    AntiFlingToggleBtn.Text = "🛡️ АНТИ-ФЛИНГ: ВЫКЛ"
-    AntiFlingToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    AntiFlingToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    AntiFlingToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🛡️ Анти-флинг выключен!")
-    
-    if antiFlingConnection then
-        antiFlingConnection:Disconnect()
-        antiFlingConnection = nil
-    end
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            for _, part in ipairs(player.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                    part.Transparency = 0
+                for _, part in ipairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                        part.Transparency = 0
+                    end
                 end
             end
         end
     end
-end
-
-
 end)
 
 local AntiVoidToggleBtn = Instance.new("TextButton")
@@ -1776,77 +1741,73 @@ AntiVoidCorner.CornerRadius = UDim.new(0, 6)
 AntiVoidCorner.Parent = AntiVoidToggleBtn
 
 AntiVoidToggleBtn.MouseButton1Click:Connect(function()
-antiVoidEnabled = not antiVoidEnabled
-playToggleSound(antiVoidEnabled)
+    antiVoidEnabled = not antiVoidEnabled
+    playToggleSound(antiVoidEnabled)
 
-if antiVoidEnabled then
-    AntiVoidToggleBtn.Text = "🛡️ АНТИ-ВОИД: ВКЛ"
-    AntiVoidToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    AntiVoidToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    AntiVoidToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🛡️ Анти-войд включен (неуязвимость в бездне)!")
-    
-    antiVoidConnection = RunService.Stepped:Connect(function()
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if root and hum then
-            if root.Position.Y < -50 then
-                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                root.CFrame = CFrame.new(root.Position.X, -48, root.Position.Z)
-                hum.Health = math.clamp(hum.Health, 1, hum.MaxHealth)
+    if antiVoidEnabled then
+        AntiVoidToggleBtn.Text = "🛡️ АНТИ-ВОИД: ВКЛ"
+        AntiVoidToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        AntiVoidToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        AntiVoidToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🛡️ Анти-войд включен (неуязвимость в бездне)!")
+
+        antiVoidConnection = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if root and hum then
+                if root.Position.Y < -50 then
+                    root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                    root.CFrame = CFrame.new(root.Position.X, -48, root.Position.Z)
+                    hum.Health = math.clamp(hum.Health, 1, hum.MaxHealth)
+                end
             end
+        end)
+    else
+        AntiVoidToggleBtn.Text = "🛡️ АНТИ-ВОИД: ВЫКЛ"
+        AntiVoidToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        AntiVoidToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        AntiVoidToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🛡️ Анти-войд выключен!")
+
+        if antiVoidConnection then
+            antiVoidConnection:Disconnect()
+            antiVoidConnection = nil
         end
-    end)
-else
-    AntiVoidToggleBtn.Text = "🛡️ АНТИ-ВОИД: ВЫКЛ"
-    AntiVoidToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    AntiVoidToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    AntiVoidToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🛡️ Анти-войд выключен!")
-    
-    if antiVoidConnection then
-        antiVoidConnection:Disconnect()
-        antiVoidConnection = nil
     end
-end
-
-
 end)
 
 local function teleportAndFreeze()
-local char = LocalPlayer.Character
-local root = char and char:FindFirstChild("HumanoidRootPart")
-local hum = char and char:FindFirstChildOfClass("Humanoid")
-if not root or not hum then
-sendNotification("⚠️ Персонаж не загружен!")
-return
-end
-
-root.AssemblyLinearVelocity = Vector3.zero
-root.AssemblyAngularVelocity = Vector3.zero
-root.CFrame = CFrame.new(16.31740951538086, 19.549619674682617, -2219.792724609375)
-root.AssemblyLinearVelocity = Vector3.zero
-root.AssemblyAngularVelocity = Vector3.zero
-
-local originalWalkSpeed = hum.WalkSpeed
-local originalJumpPower = hum.JumpPower
-
-hum.WalkSpeed = 0
-hum.JumpPower = 0
-
-sendNotification("⚡ Телепортация без скорости! Заморозка на 3 сек...")
-
-task.delay(3, function()
-    if hum and hum.Parent then
-        hum.WalkSpeed = originalWalkSpeed
-        hum.JumpPower = originalJumpPower
-        sendNotification("✅ Управление восстановлено!")
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then
+        sendNotification("⚠️ Персонаж не загружен!")
+        return
     end
-end)
 
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
+    root.CFrame = CFrame.new(16.31740951538086, 19.549619674682617, -2219.792724609375)
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
 
+    local originalWalkSpeed = hum.WalkSpeed
+    local originalJumpPower = hum.JumpPower
+
+    hum.WalkSpeed = 0
+    hum.JumpPower = 0
+
+    sendNotification("⚡ Телепортация без скорости! Заморозка на 3 сек...")
+
+    task.delay(3, function()
+        if hum and hum.Parent then
+            hum.WalkSpeed = originalWalkSpeed
+            hum.JumpPower = originalJumpPower
+            sendNotification("✅ Управление восстановлено!")
+        end
+    end)
 end
 
 local TeleportActionBtn = Instance.new("TextButton")
@@ -1867,8 +1828,8 @@ TeleportBtnCorr.CornerRadius = UDim.new(0, 6)
 TeleportBtnCorr.Parent = TeleportActionBtn
 
 TeleportActionBtn.MouseButton1Click:Connect(function()
-playClickSound()
-teleportAndFreeze()
+    playClickSound()
+    teleportAndFreeze()
 end)
 
 -- ==============================================================================
@@ -1877,84 +1838,82 @@ end)
 local PlayerPage = Pages.Player
 
 local function createSlider(parent: GuiObject, labelText: string, min: number, max: number, default: number, callback: (number) -> ())
-local container = Instance.new("Frame")
-container.Size = UDim2.new(1, -8, 0, 48)
-container.BackgroundColor3 = Color3.fromRGB(30, 15, 50)
-container.BackgroundTransparency = 0.4
-container.BorderColor3 = Color3.fromRGB(130, 60, 180)
-container.BorderSizePixel = 1
-container.ZIndex = 3
-container.Parent = parent
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -8, 0, 48)
+    container.BackgroundColor3 = Color3.fromRGB(30, 15, 50)
+    container.BackgroundTransparency = 0.4
+    container.BorderColor3 = Color3.fromRGB(130, 60, 180)
+    container.BorderSizePixel = 1
+    container.ZIndex = 3
+    container.Parent = parent
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 6)
-corner.Parent = container
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = container
 
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -12, 0, 20)
-titleLabel.Position = UDim2.new(0, 6, 0, 4)
-titleLabel.BackgroundTransparency = 1
-titleLabel.ZIndex = 4
-titleLabel.Text = labelText .. ": " .. tostring(default)
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 10
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.TextColor3 = Color3.fromRGB(210, 170, 240)
-titleLabel.Parent = container
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -12, 0, 20)
+    titleLabel.Position = UDim2.new(0, 6, 0, 4)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.ZIndex = 4
+    titleLabel.Text = labelText .. ": " .. tostring(default)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 10
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextColor3 = Color3.fromRGB(210, 170, 240)
+    titleLabel.Parent = container
 
-local sliderBar = Instance.new("Frame")
-sliderBar.Size = UDim2.new(1, -16, 0, 6)
-sliderBar.Position = UDim2.new(0, 8, 0, 30)
-sliderBar.BackgroundColor3 = Color3.fromRGB(20, 10, 35)
-sliderBar.BackgroundTransparency = 0.2
-sliderBar.BorderSizePixel = 0
-sliderBar.ZIndex = 4
-sliderBar.Parent = container
+    local sliderBar = Instance.new("Frame")
+    sliderBar.Size = UDim2.new(1, -16, 0, 6)
+    sliderBar.Position = UDim2.new(0, 8, 0, 30)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(20, 10, 35)
+    sliderBar.BackgroundTransparency = 0.2
+    sliderBar.BorderSizePixel = 0
+    sliderBar.ZIndex = 4
+    sliderBar.Parent = container
 
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(1, 0)
-barCorner.Parent = sliderBar
+    local barCorner = Instance.new("UICorner")
+    barCorner.CornerRadius = UDim.new(1, 0)
+    barCorner.Parent = sliderBar
 
-local sliderFill = Instance.new("Frame")
-sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(170, 60, 255)
-sliderFill.BorderSizePixel = 0
-sliderFill.ZIndex = 4
-sliderFill.Parent = sliderBar
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(170, 60, 255)
+    sliderFill.BorderSizePixel = 0
+    sliderFill.ZIndex = 4
+    sliderFill.Parent = sliderBar
 
-local fillCorner = Instance.new("UICorner")
-fillCorner.CornerRadius = UDim.new(1, 0)
-fillCorner.Parent = sliderFill
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = sliderFill
 
-local dragging = false
-local function update(input)
-    local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
-    local val = math.floor(min + (max - min) * pos)
-    sliderFill.Size = UDim2.new(pos, 0, 1, 0)
-    titleLabel.Text = labelText .. ": " .. tostring(val)
-    callback(val)
-end
-
-sliderBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        update(input)
+    local dragging = false
+    local function update(input)
+        local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + (max - min) * pos)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        titleLabel.Text = labelText .. ": " .. tostring(val)
+        callback(val)
     end
-end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            update(input)
+        end
+    end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
-    end
-end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
 
-
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input)
+        end
+    end)
 end
 
 local flySpeed = 50
@@ -1966,67 +1925,65 @@ local flyUpPressed = false
 local flyDownPressed = false
 
 local function createFlyControls(state: boolean)
-if state then
-if FlyControlGui then FlyControlGui:Destroy() end
+    if state then
+        if FlyControlGui then FlyControlGui:Destroy() end
 
-    FlyControlGui = Instance.new("ScreenGui")
-    FlyControlGui.Name = "TysFlyControls"
-    FlyControlGui.ResetOnSpawn = false
-    FlyControlGui.Parent = PlayerGui
-    
-    local upBtn = Instance.new("TextButton")
-    upBtn.Size = UDim2.new(0, 50, 0, 50)
-    upBtn.Position = UDim2.new(1, -70, 0.5, -60)
-    upBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
-    upBtn.BackgroundTransparency = 0.4
-    upBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
-    upBtn.BorderSizePixel = 2
-    upBtn.Text = "⬆️"
-    upBtn.Font = Enum.Font.GothamBold
-    upBtn.TextSize = 20
-    upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    upBtn.Active = true
-    upBtn.Parent = FlyControlGui
-    
-    local upCorner = Instance.new("UICorner")
-    upCorner.CornerRadius = UDim.new(1, 0)
-    upCorner.Parent = upBtn
-    
-    upBtn.MouseButton1Down:Connect(function() flyUpPressed = true end)
-    upBtn.MouseButton1Up:Connect(function() flyUpPressed = false end)
-    upBtn.MouseLeave:Connect(function() flyUpPressed = false end)
-    
-    local downBtn = Instance.new("TextButton")
-    downBtn.Size = UDim2.new(0, 50, 0, 50)
-    downBtn.Position = UDim2.new(1, -70, 0.5, 10)
-    downBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
-    downBtn.BackgroundTransparency = 0.4
-    downBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
-    downBtn.BorderSizePixel = 2
-    downBtn.Text = "⬇️"
-    downBtn.Font = Enum.Font.GothamBold
-    downBtn.TextSize = 20
-    downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    downBtn.Active = true
-    downBtn.Parent = FlyControlGui
-    
-    local downCorner = Instance.new("UICorner")
-    downCorner.CornerRadius = UDim.new(1, 0)
-    downCorner.Parent = downBtn
-    
-    downBtn.MouseButton1Down:Connect(function() flyDownPressed = true end)
-    downBtn.MouseButton1Up:Connect(function() flyDownPressed = false end)
-    downBtn.MouseLeave:Connect(function() flyDownPressed = false end)
-else
-    if FlyControlGui then
-        FlyControlGui:Destroy()
-        FlyControlGui = nil
+        FlyControlGui = Instance.new("ScreenGui")
+        FlyControlGui.Name = "TysFlyControls"
+        FlyControlGui.ResetOnSpawn = false
+        FlyControlGui.Parent = PlayerGui
+
+        local upBtn = Instance.new("TextButton")
+        upBtn.Size = UDim2.new(0, 50, 0, 50)
+        upBtn.Position = UDim2.new(1, -70, 0.5, -60)
+        upBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+        upBtn.BackgroundTransparency = 0.4
+        upBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+        upBtn.BorderSizePixel = 2
+        upBtn.Text = "⬆️"
+        upBtn.Font = Enum.Font.GothamBold
+        upBtn.TextSize = 20
+        upBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        upBtn.Active = true
+        upBtn.Parent = FlyControlGui
+
+        local upCorner = Instance.new("UICorner")
+        upCorner.CornerRadius = UDim.new(1, 0)
+        upCorner.Parent = upBtn
+
+        upBtn.MouseButton1Down:Connect(function() flyUpPressed = true end)
+        upBtn.MouseButton1Up:Connect(function() flyUpPressed = false end)
+        upBtn.MouseLeave:Connect(function() flyUpPressed = false end)
+
+        local downBtn = Instance.new("TextButton")
+        downBtn.Size = UDim2.new(0, 50, 0, 50)
+        downBtn.Position = UDim2.new(1, -70, 0.5, 10)
+        downBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+        downBtn.BackgroundTransparency = 0.4
+        downBtn.BorderColor3 = Color3.fromRGB(170, 60, 255)
+        downBtn.BorderSizePixel = 2
+        downBtn.Text = "⬇️"
+        downBtn.Font = Enum.Font.GothamBold
+        downBtn.TextSize = 20
+        downBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        downBtn.Active = true
+        downBtn.Parent = FlyControlGui
+
+        local downCorner = Instance.new("UICorner")
+        downCorner.CornerRadius = UDim.new(1, 0)
+        downCorner.Parent = downBtn
+
+        downBtn.MouseButton1Down:Connect(function() flyDownPressed = true end)
+        downBtn.MouseButton1Up:Connect(function() flyDownPressed = false end)
+        downBtn.MouseLeave:Connect(function() flyDownPressed = false end)
+    else
+        if FlyControlGui then
+            FlyControlGui:Destroy()
+            FlyControlGui = nil
+        end
+        flyUpPressed = false
+        flyDownPressed = false
     end
-    flyUpPressed = false
-    flyDownPressed = false
-end
-
-
 end
 
 local FlyToggleBtn = Instance.new("TextButton")
@@ -2047,70 +2004,68 @@ FlyCorner.CornerRadius = UDim.new(0, 6)
 FlyCorner.Parent = FlyToggleBtn
 
 FlyToggleBtn.MouseButton1Click:Connect(function()
-flyEnabled = not flyEnabled
-playToggleSound(flyEnabled)
-createFlyControls(flyEnabled)
+    flyEnabled = not flyEnabled
+    playToggleSound(flyEnabled)
+    createFlyControls(flyEnabled)
 
-if flyEnabled then
-    FlyToggleBtn.Text = "🕊️ ПОЛЕТ: ВКЛ"
-    FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    FlyToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    FlyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🕊️ Полет включен!")
-    
-    flyConnection = RunService.RenderStepped:Connect(function()
+    if flyEnabled then
+        FlyToggleBtn.Text = "🕊️ ПОЛЕТ: ВКЛ"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        FlyToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        FlyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🕊️ Полет включен!")
+
+        flyConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not root or not hum then return end
+
+            hum.PlatformStand = true
+            local camCFrame = Camera.CFrame
+            local moveDir = Vector3.zero
+
+            if hum.MoveDirection.Magnitude > 0 then
+                moveDir = camCFrame.LookVector * (hum.MoveDirection:Dot(camCFrame.LookVector)) + camCFrame.RightVector * (hum.MoveDirection:Dot(camCFrame.RightVector))
+                moveDir = moveDir.Unit
+            end
+
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) or flyUpPressed then
+                moveDir += Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) or flyDownPressed then
+                moveDir -= Vector3.new(0, 1, 0)
+            end
+
+            if moveDir.Magnitude > 0 then
+                moveDir = moveDir.Unit * flySpeed
+            end
+
+            root.AssemblyLinearVelocity = moveDir
+            root.CFrame = CFrame.new(root.Position, root.Position + camCFrame.LookVector)
+        end)
+    else
+        FlyToggleBtn.Text = "🕊️ ПОЛЕТ: ВЫКЛ"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        FlyToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        FlyToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🕊️ Полет выключен!")
+
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+
         local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if not root or not hum then return end
-        
-        hum.PlatformStand = true
-        local camCFrame = Camera.CFrame
-        local moveDir = Vector3.zero
-        
-        if hum.MoveDirection.Magnitude > 0 then
-            moveDir = camCFrame.LookVector * (hum.MoveDirection:Dot(camCFrame.LookVector)) + camCFrame.RightVector * (hum.MoveDirection:Dot(camCFrame.RightVector))
-            moveDir = moveDir.Unit
-        end
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or flyUpPressed then
-            moveDir += Vector3.new(0, 1, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift) or flyDownPressed then
-            moveDir -= Vector3.new(0, 1, 0)
-        end
-        
-        if moveDir.Magnitude > 0 then
-            moveDir = moveDir.Unit * flySpeed
-        end
-        
-        root.AssemblyLinearVelocity = moveDir
-        root.CFrame = CFrame.new(root.Position, root.Position + camCFrame.LookVector)
-    end)
-else
-    FlyToggleBtn.Text = "🕊️ ПОЛЕТ: ВЫКЛ"
-    FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    FlyToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    FlyToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🕊️ Полет выключен!")
-    
-    if flyConnection then
-        flyConnection:Disconnect()
-        flyConnection = nil
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if hum then hum.PlatformStand = false end
+        if root then root.AssemblyLinearVelocity = Vector3.zero end
     end
-    
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if hum then hum.PlatformStand = false end
-    if root then root.AssemblyLinearVelocity = Vector3.zero end
-end
-
-
 end)
 
 createSlider(PlayerPage, "🕊️ Скорость полета", 10, 300, 50, function(value)
-flySpeed = value
+    flySpeed = value
 end)
 
 local NoclipToggleBtn = Instance.new("TextButton")
@@ -2131,45 +2086,43 @@ NoclipCorner.CornerRadius = UDim.new(0, 6)
 NoclipCorner.Parent = NoclipToggleBtn
 
 NoclipToggleBtn.MouseButton1Click:Connect(function()
-noclipEnabled = not noclipEnabled
-playToggleSound(noclipEnabled)
+    noclipEnabled = not noclipEnabled
+    playToggleSound(noclipEnabled)
 
-if noclipEnabled then
-    NoclipToggleBtn.Text = "👻 НОКЛИП: ВКЛ"
-    NoclipToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    NoclipToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    NoclipToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("👻 Ноклип включен!")
-    
-    noclipConnection = RunService.Stepped:Connect(function()
+    if noclipEnabled then
+        NoclipToggleBtn.Text = "👻 НОКЛИП: ВКЛ"
+        NoclipToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        NoclipToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        NoclipToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("👻 Ноклип включен!")
+
+        noclipConnection = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+    else
+        NoclipToggleBtn.Text = "👻 НОКЛИП: ВЫКЛ"
+        NoclipToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        NoclipToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        NoclipToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("👻 Ноклип выключен!")
+
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+
         local char = LocalPlayer.Character
         if char then
             for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") then part.CanCollide = true end
             end
         end
-    end)
-else
-    NoclipToggleBtn.Text = "👻 НОКЛИП: ВЫКЛ"
-    NoclipToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    NoclipToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    NoclipToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("👻 Ноклип выключен!")
-    
-    if noclipConnection then
-        noclipConnection:Disconnect()
-        noclipConnection = nil
     end
-    
-    local char = LocalPlayer.Character
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = true end
-        end
-    end
-end
-
-
 end)
 
 local SpeedToggleBtn = Instance.new("TextButton")
@@ -2190,43 +2143,41 @@ SpeedCorner.CornerRadius = UDim.new(0, 6)
 SpeedCorner.Parent = SpeedToggleBtn
 
 SpeedToggleBtn.MouseButton1Click:Connect(function()
-speedEnabled = not speedEnabled
-playToggleSound(speedEnabled)
+    speedEnabled = not speedEnabled
+    playToggleSound(speedEnabled)
 
-if speedEnabled then
-    SpeedToggleBtn.Text = "⚡ СКОРОСТЬ ХОДЬБЫ: ВКЛ"
-    SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    SpeedToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    SpeedToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("⚡ Скорость ходьбы включена!")
-    
-    speedConnection = RunService.RenderStepped:Connect(function()
+    if speedEnabled then
+        SpeedToggleBtn.Text = "⚡ СКОРОСТЬ ХОДЬБЫ: ВКЛ"
+        SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        SpeedToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        SpeedToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("⚡ Скорость ходьбы включена!")
+
+        speedConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = walkSpeed end
+        end)
+    else
+        SpeedToggleBtn.Text = "⚡ СКОРОСТЬ ХОДЬБЫ: ВЫКЛ"
+        SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        SpeedToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        SpeedToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("⚡ Скорость ходьбы выключена!")
+
+        if speedConnection then
+            speedConnection:Disconnect()
+            speedConnection = nil
+        end
+
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = walkSpeed end
-    end)
-else
-    SpeedToggleBtn.Text = "⚡ СКОРОСТЬ ХОДЬБЫ: ВЫКЛ"
-    SpeedToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    SpeedToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    SpeedToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("⚡ Скорость ходьбы выключена!")
-    
-    if speedConnection then
-        speedConnection:Disconnect()
-        speedConnection = nil
+        if hum then hum.WalkSpeed = 16 end
     end
-    
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.WalkSpeed = 16 end
-end
-
-
 end)
 
 createSlider(PlayerPage, "⚡ Скорость", 16, 300, 16, function(value)
-walkSpeed = value
+    walkSpeed = value
 end)
 
 local JumpToggleBtn = Instance.new("TextButton")
@@ -2247,49 +2198,47 @@ JumpCorner.CornerRadius = UDim.new(0, 6)
 JumpCorner.Parent = JumpToggleBtn
 
 JumpToggleBtn.MouseButton1Click:Connect(function()
-jumpEnabled = not jumpEnabled
-playToggleSound(jumpEnabled)
+    jumpEnabled = not jumpEnabled
+    playToggleSound(jumpEnabled)
 
-if jumpEnabled then
-    JumpToggleBtn.Text = "🦘 СИЛА ПРЫЖКА: ВКЛ"
-    JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    JumpToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    JumpToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🦘 Сила прыжка включена!")
-    
-    jumpConnection = RunService.RenderStepped:Connect(function()
+    if jumpEnabled then
+        JumpToggleBtn.Text = "🦘 СИЛА ПРЫЖКА: ВКЛ"
+        JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        JumpToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        JumpToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🦘 Сила прыжка включена!")
+
+        jumpConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.UseJumpPower = true
+                hum.JumpPower = jumpPower
+            end
+        end)
+    else
+        JumpToggleBtn.Text = "🦘 СИЛА ПРЫЖКА: ВЫКЛ"
+        JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        JumpToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        JumpToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🦘 Сила прыжка выключена!")
+
+        if jumpConnection then
+            jumpConnection:Disconnect()
+            jumpConnection = nil
+        end
+
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if hum then
             hum.UseJumpPower = true
-            hum.JumpPower = jumpPower
+            hum.JumpPower = 50
         end
-    end)
-else
-    JumpToggleBtn.Text = "🦘 СИЛА ПРЫЖКА: ВЫКЛ"
-    JumpToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    JumpToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    JumpToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🦘 Сила прыжка выключена!")
-    
-    if jumpConnection then
-        jumpConnection:Disconnect()
-        jumpConnection = nil
     end
-    
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.UseJumpPower = true
-        hum.JumpPower = 50
-    end
-end
-
-
 end)
 
 createSlider(PlayerPage, "🦘 Сила прыжка", 50, 300, 50, function(value)
-jumpPower = value
+    jumpPower = value
 end)
 
 local InfJumpToggleBtn = Instance.new("TextButton")
@@ -2310,37 +2259,35 @@ InfJumpCorner.CornerRadius = UDim.new(0, 6)
 InfJumpCorner.Parent = InfJumpToggleBtn
 
 InfJumpToggleBtn.MouseButton1Click:Connect(function()
-infJumpEnabled = not infJumpEnabled
-playToggleSound(infJumpEnabled)
+    infJumpEnabled = not infJumpEnabled
+    playToggleSound(infJumpEnabled)
 
-if infJumpEnabled then
-    InfJumpToggleBtn.Text = "🚀 БЕСКОНЕЧНЫЙ ПРЫЖОК: ВКЛ"
-    InfJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-    InfJumpToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-    InfJumpToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    sendNotification("🚀 Бесконечный прыжок включен!")
-    
-    infJumpConnection = UserInputService.JumpRequest:Connect(function()
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    if infJumpEnabled then
+        InfJumpToggleBtn.Text = "🚀 БЕСКОНЕЧНЫЙ ПРЫЖОК: ВКЛ"
+        InfJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
+        InfJumpToggleBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
+        InfJumpToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sendNotification("🚀 Бесконечный прыжок включен!")
+
+        infJumpConnection = UserInputService.JumpRequest:Connect(function()
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        InfJumpToggleBtn.Text = "🚀 БЕСКОНЕЧНЫЙ ПРЫЖОК: ВЫКЛ"
+        InfJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+        InfJumpToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
+        InfJumpToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
+        sendNotification("🚀 Бесконечный прыжок выключен!")
+
+        if infJumpConnection then
+            infJumpConnection:Disconnect()
+            infJumpConnection = nil
         end
-    end)
-else
-    InfJumpToggleBtn.Text = "🚀 БЕСКОНЕЧНЫЙ ПРЫЖОК: ВЫКЛ"
-    InfJumpToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
-    InfJumpToggleBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-    InfJumpToggleBtn.TextColor3 = Color3.fromRGB(200, 170, 230)
-    sendNotification("🚀 Бесконечный прыжок выключен!")
-    
-    if infJumpConnection then
-        infJumpConnection:Disconnect()
-        infJumpConnection = nil
     end
-end
-
-
 end)
 
 -- ==============================================================================
@@ -2388,81 +2335,79 @@ WInnerLayout.Padding = UDim.new(0, 4)
 WInnerLayout.Parent = WhitelistScrolling
 
 local function refreshWhitelistList()
-for _, child in ipairs(WhitelistScrolling:GetChildren()) do
-if child:IsA("Frame") then
-child:Destroy()
-end
-end
-
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        local isWhitelisted = whitelistedPlayers[player] == true
-        
-        local pRow = Instance.new("Frame")
-        pRow.Size = UDim2.new(1, -8, 0, 30)
-        pRow.BackgroundTransparency = 1
-        pRow.ZIndex = 4
-        pRow.Parent = WhitelistScrolling
-        
-        local pLabel = Instance.new("TextButton")
-        pLabel.Size = UDim2.new(1, -78, 1, 0)
-        pLabel.Position = UDim2.new(0, 0, 0, 0)
-        pLabel.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
-        pLabel.BackgroundTransparency = 0.5
-        pLabel.BorderColor3 = Color3.fromRGB(170, 60, 255)
-        pLabel.BorderSizePixel = 0
-        pLabel.ZIndex = 4
-        pLabel.Text = "  " .. player.Name .. " (@" .. player.DisplayName .. ")"
-        pLabel.Font = Enum.Font.GothamMedium
-        pLabel.TextSize = 10
-        pLabel.TextXAlignment = Enum.TextXAlignment.Left
-        pLabel.TextColor3 = Color3.fromRGB(210, 170, 255)
-        pLabel.Parent = pRow
-        
-        local pCorner = Instance.new("UICorner")
-        pCorner.CornerRadius = UDim.new(0, 4)
-        pCorner.Parent = pLabel
-        
-        local wlBtn = Instance.new("TextButton")
-        wlBtn.Size = UDim2.new(0, 74, 1, 0)
-        wlBtn.Position = UDim2.new(1, -74, 0, 0)
-        wlBtn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(40, 120, 50) or Color3.fromRGB(80, 20, 50)
-        wlBtn.BackgroundTransparency = 0.2
-        wlBtn.BorderColor3 = isWhitelisted and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 120)
-        wlBtn.BorderSizePixel = 1
-        wlBtn.ZIndex = 5
-        wlBtn.Text = isWhitelisted and "В СИСЕ" or "ДОБАВИТЬ"
-        wlBtn.Font = Enum.Font.GothamBold
-        wlBtn.TextSize = 8
-        wlBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        wlBtn.Parent = pRow
-        
-        local wlCorner = Instance.new("UICorner")
-        wlCorner.CornerRadius = UDim.new(0, 4)
-        wlCorner.Parent = wlBtn
-        
-        wlBtn.MouseButton1Click:Connect(function()
-            playClickSound()
-            if whitelistedPlayers[player] then
-                whitelistedPlayers[player] = nil
-                sendNotification("❌ Игрок " .. player.Name .. " удален из вайтлиста")
-            else
-                whitelistedPlayers[player] = true
-                sendNotification("✅ Игрок " .. player.Name .. " добавлен в вайтлист")
-            end
-            refreshWhitelistList()
-        end)
+    for _, child in ipairs(WhitelistScrolling:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
     end
-end
 
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local isWhitelisted = whitelistedPlayers[player] == true
 
+            local pRow = Instance.new("Frame")
+            pRow.Size = UDim2.new(1, -8, 0, 30)
+            pRow.BackgroundTransparency = 1
+            pRow.ZIndex = 4
+            pRow.Parent = WhitelistScrolling
+
+            local pLabel = Instance.new("TextButton")
+            pLabel.Size = UDim2.new(1, -78, 1, 0)
+            pLabel.Position = UDim2.new(0, 0, 0, 0)
+            pLabel.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+            pLabel.BackgroundTransparency = 0.5
+            pLabel.BorderColor3 = Color3.fromRGB(170, 60, 255)
+            pLabel.BorderSizePixel = 0
+            pLabel.ZIndex = 4
+            pLabel.Text = "  " .. player.Name .. " (@" .. player.DisplayName .. ")"
+            pLabel.Font = Enum.Font.GothamMedium
+            pLabel.TextSize = 10
+            pLabel.TextXAlignment = Enum.TextXAlignment.Left
+            pLabel.TextColor3 = Color3.fromRGB(210, 170, 255)
+            pLabel.Parent = pRow
+
+            local pCorner = Instance.new("UICorner")
+            pCorner.CornerRadius = UDim.new(0, 4)
+            pCorner.Parent = pLabel
+
+            local wlBtn = Instance.new("TextButton")
+            wlBtn.Size = UDim2.new(0, 74, 1, 0)
+            wlBtn.Position = UDim2.new(1, -74, 0, 0)
+            wlBtn.BackgroundColor3 = isWhitelisted and Color3.fromRGB(40, 120, 50) or Color3.fromRGB(80, 20, 50)
+            wlBtn.BackgroundTransparency = 0.2
+            wlBtn.BorderColor3 = isWhitelisted and Color3.fromRGB(80, 255, 120) or Color3.fromRGB(255, 80, 120)
+            wlBtn.BorderSizePixel = 1
+            wlBtn.ZIndex = 5
+            wlBtn.Text = isWhitelisted and "В СПИСКЕ" or "ДОБАВИТЬ"
+            wlBtn.Font = Enum.Font.GothamBold
+            wlBtn.TextSize = 8
+            wlBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            wlBtn.Parent = pRow
+
+            local wlCorner = Instance.new("UICorner")
+            wlCorner.CornerRadius = UDim.new(0, 4)
+            wlCorner.Parent = wlBtn
+
+            wlBtn.MouseButton1Click:Connect(function()
+                playClickSound()
+                if whitelistedPlayers[player] then
+                    whitelistedPlayers[player] = nil
+                    sendNotification("❌ Игрок " .. player.Name .. " удален из вайтлиста")
+                else
+                    whitelistedPlayers[player] = true
+                    sendNotification("✅ Игрок " .. player.Name .. " добавлен в вайтлист")
+                end
+                refreshWhitelistList()
+            end)
+        end
+    end
 end
 
 refreshWhitelistList()
 Players.PlayerAdded:Connect(refreshWhitelistList)
 Players.PlayerRemoving:Connect(function(player)
-whitelistedPlayers[player] = nil
-refreshWhitelistList()
+    whitelistedPlayers[player] = nil
+    refreshWhitelistList()
 end)
 
 local RefreshWlBtn = Instance.new("TextButton")
@@ -2483,10 +2428,251 @@ RefreshWlCorner.CornerRadius = UDim.new(0, 6)
 RefreshWlCorner.Parent = RefreshWlBtn
 
 RefreshWlBtn.MouseButton1Click:Connect(function()
-playClickSound()
-refreshWhitelistList()
-sendNotification("🔄 Вайтлист обновлен!")
+    playClickSound()
+    refreshWhitelistList()
+    sendNotification("🔄 Вайтлист обновлен!")
 end)
+
+-- ==============================================================================
+-- Вкладка Чат между юзерами
+-- ==============================================================================
+local ChatPage = Pages.UserChat
+
+local ChatHeader = Instance.new("TextLabel")
+ChatHeader.Size = UDim2.new(1, -8, 0, 18)
+ChatHeader.BackgroundTransparency = 1
+ChatHeader.ZIndex = 3
+ChatHeader.Text = "💬 ЧАТ МЕЖДУ ПОЛЬЗОВАТЕЛЯМИ TYS HUB:"
+ChatHeader.Font = Enum.Font.GothamBold
+ChatHeader.TextSize = 11
+ChatHeader.TextXAlignment = Enum.TextXAlignment.Left
+ChatHeader.TextColor3 = Color3.fromRGB(220, 180, 255)
+ChatHeader.Parent = ChatPage
+
+local ChatSubHeader = Instance.new("TextLabel")
+ChatSubHeader.Size = UDim2.new(1, -8, 0, 14)
+ChatSubHeader.Position = UDim2.new(0, 0, 0, 18)
+ChatSubHeader.BackgroundTransparency = 1
+ChatSubHeader.ZIndex = 3
+ChatSubHeader.Text = "🌐 Сообщения видят только другие игроки с запущенным хабом"
+ChatSubHeader.Font = Enum.Font.GothamMedium
+ChatSubHeader.TextSize = 9
+ChatSubHeader.TextXAlignment = Enum.TextXAlignment.Left
+ChatSubHeader.TextColor3 = Color3.fromRGB(170, 140, 210)
+ChatSubHeader.Parent = ChatPage
+
+local ChatBoxContainer = Instance.new("Frame")
+ChatBoxContainer.Size = UDim2.new(1, -8, 1, -78)
+ChatBoxContainer.Position = UDim2.new(0, 0, 0, 36)
+ChatBoxContainer.BackgroundColor3 = Color3.fromRGB(25, 12, 45)
+ChatBoxContainer.BackgroundTransparency = 0.6
+ChatBoxContainer.BorderSizePixel = 0
+ChatBoxContainer.ZIndex = 3
+ChatBoxContainer.Parent = ChatPage
+
+local ChatBoxCorner = Instance.new("UICorner")
+ChatBoxCorner.CornerRadius = UDim.new(0, 6)
+ChatBoxCorner.Parent = ChatBoxContainer
+
+local ChatScrolling = Instance.new("ScrollingFrame")
+ChatScrolling.Size = UDim2.new(1, -8, 1, -8)
+ChatScrolling.Position = UDim2.new(0, 4, 0, 4)
+ChatScrolling.BackgroundTransparency = 1
+ChatScrolling.BorderSizePixel = 0
+ChatScrolling.ZIndex = 4
+ChatScrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+ChatScrolling.ScrollBarThickness = 4
+ChatScrolling.ScrollBarImageColor3 = Color3.fromRGB(170, 60, 255)
+ChatScrolling.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ChatScrolling.Parent = ChatBoxContainer
+
+local ChatLayout = Instance.new("UIListLayout")
+ChatLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ChatLayout.Padding = UDim.new(0, 5)
+ChatLayout.Parent = ChatScrolling
+
+local InputContainer = Instance.new("Frame")
+InputContainer.Size = UDim2.new(1, -8, 0, 34)
+InputContainer.Position = UDim2.new(0, 0, 1, -36)
+InputContainer.BackgroundColor3 = Color3.fromRGB(25, 12, 45)
+InputContainer.BackgroundTransparency = 0.5
+InputContainer.BorderColor3 = Color3.fromRGB(140, 50, 255)
+InputContainer.BorderSizePixel = 1
+InputContainer.ZIndex = 3
+InputContainer.Parent = ChatPage
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 6)
+InputCorner.Parent = InputContainer
+
+local ChatTextBox = Instance.new("TextBox")
+ChatTextBox.Size = UDim2.new(1, -44, 1, 0)
+ChatTextBox.Position = UDim2.new(0, 8, 0, 0)
+ChatTextBox.BackgroundTransparency = 1
+ChatTextBox.ClearTextOnFocus = false
+ChatTextBox.Font = Enum.Font.GothamMedium
+ChatTextBox.PlaceholderText = "Введите сообщение в чат хаба..."
+ChatTextBox.PlaceholderColor3 = Color3.fromRGB(160, 130, 200)
+ChatTextBox.Text = ""
+ChatTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+ChatTextBox.TextSize = 11
+ChatTextBox.TextXAlignment = Enum.TextXAlignment.Left
+ChatTextBox.ZIndex = 4
+ChatTextBox.Parent = InputContainer
+
+local SendMsgBtn = Instance.new("TextButton")
+SendMsgBtn.Size = UDim2.new(0, 32, 0, 26)
+SendMsgBtn.Position = UDim2.new(1, -34, 0.5, -13)
+SendMsgBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 120)
+SendMsgBtn.BackgroundTransparency = 0.2
+SendMsgBtn.BorderColor3 = Color3.fromRGB(190, 80, 255)
+SendMsgBtn.BorderSizePixel = 1
+SendMsgBtn.Text = "➤"
+SendMsgBtn.Font = Enum.Font.GothamBold
+SendMsgBtn.TextSize = 14
+SendMsgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SendMsgBtn.ZIndex = 4
+SendMsgBtn.Parent = InputContainer
+
+local SendCorner = Instance.new("UICorner")
+SendCorner.CornerRadius = UDim.new(0, 4)
+SendCorner.Parent = SendMsgBtn
+
+local recentChatLog = {}
+local function addChatMessage(senderName: string, text: string, isLocal: boolean)
+    local msgKey = senderName .. ":" .. text
+    if recentChatLog[msgKey] and (os.clock() - recentChatLog[msgKey] < 0.4) then
+        return
+    end
+    recentChatLog[msgKey] = os.clock()
+
+    local msgRow = Instance.new("Frame")
+    msgRow.Size = UDim2.new(1, -6, 0, 0)
+    msgRow.AutomaticSize = Enum.AutomaticSize.Y
+    msgRow.BackgroundColor3 = isLocal and Color3.fromRGB(55, 20, 90) or Color3.fromRGB(30, 14, 52)
+    msgRow.BackgroundTransparency = 0.2
+    msgRow.BorderColor3 = isLocal and Color3.fromRGB(200, 100, 255) or Color3.fromRGB(130, 50, 180)
+    msgRow.BorderSizePixel = 1
+    msgRow.ZIndex = 5
+    msgRow.Parent = ChatScrolling
+
+    local rowCorner = Instance.new("UICorner")
+    rowCorner.CornerRadius = UDim.new(0, 6)
+    rowCorner.Parent = msgRow
+
+    local rowPadding = Instance.new("UIPadding")
+    rowPadding.PaddingLeft = UDim.new(0, 8)
+    rowPadding.PaddingRight = UDim.new(0, 8)
+    rowPadding.PaddingTop = UDim.new(0, 4)
+    rowPadding.PaddingBottom = UDim.new(0, 4)
+    rowPadding.Parent = msgRow
+
+    local msgLabel = Instance.new("TextLabel")
+    msgLabel.Size = UDim2.new(1, 0, 0, 0)
+    msgLabel.AutomaticSize = Enum.AutomaticSize.Y
+    msgLabel.BackgroundTransparency = 1
+    msgLabel.Font = Enum.Font.GothamMedium
+    msgLabel.TextSize = 10
+    msgLabel.TextWrapped = true
+    msgLabel.TextXAlignment = Enum.TextXAlignment.Left
+    msgLabel.RichText = true
+    msgLabel.ZIndex = 6
+    local colorHex = isLocal and "#df99ff" or "#85e0ff"
+    msgLabel.Text = string.format("<font color='%s'><b>%s:</b></font> <font color='#ffffff'>%s</font>", colorHex, senderName, text)
+    msgLabel.Parent = msgRow
+
+    task.defer(function()
+        ChatScrolling.CanvasPosition = Vector2.new(0, 999999)
+    end)
+
+    if not isLocal then
+        playSound("rbxassetid://9114221317", 0.25, 1.4)
+        if not ChatPage.Visible then
+            sendNotification("💬 [" .. senderName .. "]: " .. text, 3)
+        end
+    end
+end
+
+local function sendTysChatMessage()
+    local text = ChatTextBox.Text
+    if not text or text:gsub("%s+", "") == "" then return end
+    ChatTextBox.Text = ""
+    playClickSound()
+
+    local formatted = "[TysChat] " .. text
+
+    local sent = false
+    if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local textChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if textChannel then
+            pcall(function()
+                textChannel:SendAsync(formatted)
+                sent = true
+            end)
+        end
+    end
+
+    if not sent then
+        local defaultEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        local sayRequest = defaultEvents and defaultEvents:FindFirstChild("SayMessageRequest")
+        if sayRequest then
+            pcall(function()
+                sayRequest:FireServer(formatted, "All")
+            end)
+        end
+    end
+end
+
+SendMsgBtn.MouseButton1Click:Connect(sendTysChatMessage)
+ChatTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        sendTysChatMessage()
+    end
+end)
+
+-- Скрытие сообщений [TysChat] из обычного чата для юзеров хаба
+pcall(function()
+    if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        TextChatService.OnIncomingMessageCallback = function(message)
+            local props = Instance.new("TextChatMessageProperties")
+            if message.Text and string.find(message.Text, "^%[TysChat%]") then
+                props.Text = ""
+            end
+            return props
+        end
+    end
+end)
+
+-- Прослушивание сообщений (TextChatService)
+pcall(function()
+    if TextChatService and TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        TextChatService.MessageReceived:Connect(function(textChatMessage)
+            local fullText = textChatMessage.Text
+            if fullText and string.sub(fullText, 1, 9) == "[TysChat]" then
+                local cleanMsg = string.sub(fullText, 10):gsub("^%s+", "")
+                local sender = textChatMessage.TextSource and Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+                local senderName = sender and (sender.DisplayName .. " (@" .. sender.Name .. ")") or "Неизвестный"
+                addChatMessage(senderName, cleanMsg, sender == LocalPlayer)
+            end
+        end)
+    end
+end)
+
+-- Прослушивание сообщений (Legacy Chat)
+local function hookChatted(player: Player)
+    player.Chatted:Connect(function(msg)
+        if string.sub(msg, 1, 9) == "[TysChat]" then
+            local cleanMsg = string.sub(msg, 10):gsub("^%s+", "")
+            local senderName = player.DisplayName .. " (@" .. player.Name .. ")"
+            addChatMessage(senderName, cleanMsg, player == LocalPlayer)
+        end
+    end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    hookChatted(plr)
+end
+Players.PlayerAdded:Connect(hookChatted)
 
 -- ==============================================================================
 -- Вкладка Сторонние скрипты
@@ -2522,24 +2708,22 @@ EspCorner.CornerRadius = UDim.new(0, 6)
 EspCorner.Parent = EspBtn
 
 EspBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("👀 Загрузка ESP...")
-local success, err = pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.local/universal-esp"))()
-end)
-if not success then
-success, err = pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/master/UnnamedESP.lua"))()
-end)
-end
+    playClickSound()
+    sendNotification("👀 Загрузка ESP...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.local/universal-esp"))()
+    end)
+    if not success then
+        success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/master/UnnamedESP.lua"))()
+        end)
+    end
 
-if success then
-    sendNotification("✅ ESP успешно загружен!")
-else
-    sendNotification("⚠️ Ошибка загрузки ESP!")
-end
-
-
+    if success then
+        sendNotification("✅ ESP успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки ESP!")
+    end
 end)
 
 local GazeEmoteBtn = Instance.new("TextButton")
@@ -2560,16 +2744,16 @@ GazeEmoteCorner.CornerRadius = UDim.new(0, 6)
 GazeEmoteCorner.Parent = GazeEmoteBtn
 
 GazeEmoteBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("💃 Загрузка Gaze Emote...")
-local success, err = pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Gazer-Ha/Gaze-stuff/refs/heads/main/Gaze%20emote"))()
-end)
-if success then
-sendNotification("✅ Gaze Emote успешно загружен!")
-else
-sendNotification("⚠️ Ошибка загрузки Gaze Emote!")
-end
+    playClickSound()
+    sendNotification("💃 Загрузка Gaze Emote...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Gazer-Ha/Gaze-stuff/refs/heads/main/Gaze%20emote"))()
+    end)
+    if success then
+        sendNotification("✅ Gaze Emote успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки Gaze Emote!")
+    end
 end)
 
 local ShiftlockScriptBtn = Instance.new("TextButton")
@@ -2590,16 +2774,16 @@ ShiftlockScriptCorner.CornerRadius = UDim.new(0, 6)
 ShiftlockScriptCorner.Parent = ShiftlockScriptBtn
 
 ShiftlockScriptBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("🔒 Загрузка Permanent Shiftlock...")
-local success, err = pcall(function()
-loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-Permanent-Shiftlock-7513"))()
-end)
-if success then
-sendNotification("✅ Permanent Shiftlock успешно загружен!")
-else
-sendNotification("⚠️ Ошибка загрузки Permanent Shiftlock!")
-end
+    playClickSound()
+    sendNotification("🔒 Загрузка Permanent Shiftlock...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-Permanent-Shiftlock-7513"))()
+    end)
+    if success then
+        sendNotification("✅ Permanent Shiftlock успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки Permanent Shiftlock!")
+    end
 end)
 
 local AimbotBtn = Instance.new("TextButton")
@@ -2620,16 +2804,16 @@ AimbotCorner.CornerRadius = UDim.new(0, 6)
 AimbotCorner.Parent = AimbotBtn
 
 AimbotBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("🎯 Загрузка Aimbot...")
-local success, err = pcall(function()
-loadstring(game:HttpGet("https://pastebin.com/raw/USTbHNJa"))()
-end)
-if success then
-sendNotification("✅ Aimbot успешно загружен!")
-else
-sendNotification("⚠️ Ошибка загрузки Aimbot!")
-end
+    playClickSound()
+    sendNotification("🎯 Загрузка Aimbot...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/USTbHNJa"))()
+    end)
+    if success then
+        sendNotification("✅ Aimbot успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки Aimbot!")
+    end
 end)
 
 local AfemMaxBtn = Instance.new("TextButton")
@@ -2650,29 +2834,29 @@ AfemMaxCorner.CornerRadius = UDim.new(0, 6)
 AfemMaxCorner.Parent = AfemMaxBtn
 
 AfemMaxBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("⚡ Загрузка Afem Max...")
-local success, err = pcall(function()
-local src = ""
-local CoreGui = game:GetService("StarterGui")
-pcall(function()
-src = game:HttpGet("https://yarhm.com/scr?channel=afemmaxlift", false)
-end)
-if src == "" then
-CoreGui:SetCore("SendNotification", {
-Title = "YARHM Outage";
-Text = "YARHM Online is currently unavailable! Using YARHM Offline.";
-Duration = 5;
-})
-src = game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/refs/heads/main/afemmaxlite.lua", false)
-end
-loadstring(src)()
-end)
-if success then
-sendNotification("✅ Afem Max успешно загружен!")
-else
-sendNotification("⚠️ Ошибка загрузки Afem Max!")
-end
+    playClickSound()
+    sendNotification("⚡ Загрузка Afem Max...")
+    local success, err = pcall(function()
+        local src = ""
+        local CoreGui = game:GetService("StarterGui")
+        pcall(function()
+            src = game:HttpGet("https://yarhm.com/scr?channel=afemmaxlift", false)
+        end)
+        if src == "" then
+            CoreGui:SetCore("SendNotification", {
+                Title = "YARHM Outage";
+                Text = "YARHM Online is currently unavailable! Using YARHM Offline.";
+                Duration = 5;
+            })
+            src = game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/refs/heads/main/afemmaxlite.lua", false)
+        end
+        loadstring(src)()
+    end)
+    if success then
+        sendNotification("✅ Afem Max успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки Afem Max!")
+    end
 end)
 
 local CoordsBtn = Instance.new("TextButton")
@@ -2693,20 +2877,20 @@ CoordsCorner.CornerRadius = UDim.new(0, 6)
 CoordsCorner.Parent = CoordsBtn
 
 CoordsBtn.MouseButton1Click:Connect(function()
-playClickSound()
-sendNotification("📍 Загрузка Coordinates Finder V2...")
-local success, err = pcall(function()
-loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-coordinates-finder-v2-239379"))()
-end)
-if success then
-sendNotification("✅ Coordinates Finder V2 успешно загружен!")
-else
-sendNotification("⚠️ Ошибка загрузки Coordinates Finder V2!")
-end
+    playClickSound()
+    sendNotification("📍 Загрузка Coordinates Finder V2...")
+    local success, err = pcall(function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-coordinates-finder-v2-239379"))()
+    end)
+    if success then
+        sendNotification("✅ Coordinates Finder V2 успешно загружен!")
+    else
+        sendNotification("⚠️ Ошибка загрузки Coordinates Finder V2!")
+    end
 end)
 
 -- ==============================================================================
--- Вкладка Настройки (Назначение бинда сворачивания/разворачивания, звуки и т.д.)
+-- Вкладка Настройки
 -- ==============================================================================
 local SettingsPage = Pages.Settings
 
@@ -2766,111 +2950,52 @@ BindBtnCorner.CornerRadius = UDim.new(0, 6)
 BindBtnCorner.Parent = BindBtn
 
 BindBtn.MouseButton1Click:Connect(function()
-playClickSound()
-if listeningForBind then return end
-listeningForBind = true
-BindBtn.Text = "..."
-BindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
-sendNotification("⌨️ Нажмите клавишу для бинда меню...")
+    playClickSound()
+    if listeningForBind then return end
+    listeningForBind = true
+    BindBtn.Text = "..."
+    BindBtn.TextColor3 = Color3.fromRGB(255, 200, 100)
+    sendNotification("⌨️ Нажмите клавишу для бинда меню...")
 
-local connection
-connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        toggleMenuKey = input.KeyCode
-        BindBtn.Text = tostring(toggleMenuKey.Name)
-        BindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        sendNotification("✅ Новый бинд меню установлен: " .. tostring(toggleMenuKey.Name))
-        listeningForBind = false
-        connection:Disconnect()
-    end
+    local connection
+    connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            toggleMenuKey = input.KeyCode
+            BindBtn.Text = tostring(toggleMenuKey.Name)
+            BindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            sendNotification("✅ Новый бинд меню установлен: " .. tostring(toggleMenuKey.Name))
+            listeningForBind = false
+            connection:Disconnect()
+        end
+    end)
 end)
 
 
-end)
+    local toggleVisBtn = Instance.new("TextButton")
+    toggleVisBtn.Size = UDim2.new(1, -8, 0, 42)
+    toggleVisBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 90)
+    toggleVisBtn.BackgroundTransparency = 0.3
+    toggleVisBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
+    toggleVisBtn.BorderSizePixel = 1
+    toggleVisBtn.ZIndex = 3
+    toggleVisBtn.Text = "👁️ Скрыть/Показать кнопку на экране"
+    toggleVisBtn.Font = Enum.Font.GothamBold
+    toggleVisBtn.TextSize = 11
+    toggleVisBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
+    toggleVisBtn.Parent = SettingsPage
 
-local SoundToggleContainer = Instance.new("Frame")
-SoundToggleContainer.Size = UDim2.new(1, -8, 0, 48)
-SoundToggleContainer.BackgroundColor3 = Color3.fromRGB(30, 15, 50)
-SoundToggleContainer.BackgroundTransparency = 0.4
-SoundToggleContainer.BorderColor3 = Color3.fromRGB(130, 60, 180)
-SoundToggleContainer.BorderSizePixel = 1
-SoundToggleContainer.ZIndex = 3
-SoundToggleContainer.Parent = SettingsPage
+    local visCorner = Instance.new("UICorner")
+    visCorner.CornerRadius = UDim.new(0, 6)
+    visCorner.Parent = toggleVisBtn
 
-local SoundCorner = Instance.new("UICorner")
-SoundCorner.CornerRadius = UDim.new(0, 6)
-SoundCorner.Parent = SoundToggleContainer
-
-local SoundLabel = Instance.new("TextLabel")
-SoundLabel.Size = UDim2.new(1, -90, 1, 0)
-SoundLabel.Position = UDim2.new(0, 10, 0, 0)
-SoundLabel.BackgroundTransparency = 1
-SoundLabel.ZIndex = 4
-SoundLabel.Text = "🔊 Звуки интерфейса:"
-SoundLabel.Font = Enum.Font.GothamBold
-SoundLabel.TextSize = 11
-SoundLabel.TextXAlignment = Enum.TextXAlignment.Left
-SoundLabel.TextColor3 = Color3.fromRGB(210, 170, 240)
-SoundLabel.Parent = SoundToggleContainer
-
-local SoundBtn = Instance.new("TextButton")
-SoundBtn.Size = UDim2.new(0, 74, 0, 30)
-SoundBtn.Position = UDim2.new(1, -82, 0.5, -15)
-SoundBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-SoundBtn.BackgroundTransparency = 0.2
-SoundBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-SoundBtn.BorderSizePixel = 1
-SoundBtn.ZIndex = 4
-SoundBtn.Text = "ВКЛ"
-SoundBtn.Font = Enum.Font.GothamBold
-SoundBtn.TextSize = 10
-SoundBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SoundBtn.Parent = SoundToggleContainer
-
-local SoundBtnCorner = Instance.new("UICorner")
-SoundBtnCorner.CornerRadius = UDim.new(0, 6)
-SoundBtnCorner.Parent = SoundBtn
-
-SoundBtn.MouseButton1Click:Connect(function()
-soundsEnabled = not soundsEnabled
-if soundsEnabled then
-SoundBtn.Text = "ВКЛ"
-SoundBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 120)
-SoundBtn.BorderColor3 = Color3.fromRGB(200, 100, 255)
-sendNotification("🔊 Звуки интерфейса включены")
-else
-SoundBtn.Text = "ВЫКЛ"
-SoundBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 70)
-SoundBtn.BorderColor3 = Color3.fromRGB(130, 60, 180)
-sendNotification("🔇 Звуки интерфейса выключены")
-end
-end)
-
-local ToggleVisibilityBtn = Instance.new("TextButton")
-ToggleVisibilityBtn.Size = UDim2.new(1, -8, 0, 42)
-ToggleVisibilityBtn.BackgroundColor3 = Color3.fromRGB(70, 20, 90)
-ToggleVisibilityBtn.BackgroundTransparency = 0.3
-ToggleVisibilityBtn.BorderColor3 = Color3.fromRGB(180, 80, 255)
-ToggleVisibilityBtn.BorderSizePixel = 1
-ToggleVisibilityBtn.ZIndex = 3
-ToggleVisibilityBtn.Text = "👁️ Скрыть/Показать кнопку на экране"
-ToggleVisibilityBtn.Font = Enum.Font.GothamBold
-ToggleVisibilityBtn.TextSize = 11
-ToggleVisibilityBtn.TextColor3 = Color3.fromRGB(240, 200, 255)
-ToggleVisibilityBtn.Parent = SettingsPage
-
-local VisCorner = Instance.new("UICorner")
-VisCorner.CornerRadius = UDim.new(0, 6)
-VisCorner.Parent = ToggleVisibilityBtn
-
-local isToggleButtonVisible = true
-ToggleVisibilityBtn.MouseButton1Click:Connect(function()
-playClickSound()
-isToggleButtonVisible = not isToggleButtonVisible
-ToggleButton.Visible = isToggleButtonVisible
-if isToggleButtonVisible then
-sendNotification("👁️ Плавающая кнопка показана")
-else
-sendNotification("👁️ Плавающая кнопка скрыта (используйте бинд)")
-end
-end)
+    local isBtnVisible = true
+    toggleVisBtn.MouseButton1Click:Connect(function()
+        playClickSound()
+        isBtnVisible = not isBtnVisible
+        ToggleButton.Visible = isBtnVisible
+        if isBtnVisible then
+            sendNotification("👁️ Плавающая кнопка показана")
+        else
+            sendNotification("👁️ Плавающая кнопка скрыта")
+        end
+    end)
