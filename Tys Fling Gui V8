@@ -2437,32 +2437,15 @@ end)
 -- Вкладка Чат между юзерами
 -- ==============================================================================
 -- ==============================================================================
--- Вкладка Скрытый Чат между юзерами (С уведомлениями и звуком)
+-- Вкладка Скрытый Чат (Авторизация через Database Secret)
 -- ==============================================================================
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
 local ChatPage = Pages.UserChat
 
--- Хранилище ссылок на нужные элементы без переполнения локальных регистров
 local UI = {}
-
--- Функция вызова всплывающего системного уведомления
-local function triggerNotification(title: string, text: string)
-    if typeof(sendNotification) == "function" then
-        sendNotification(title .. ": " .. text, 4)
-    else
-        pcall(function()
-            StarterGui:SetCore("SendNotification", {
-                Title = title,
-                Text = text,
-                Duration = 4
-            })
-        end)
-    end
-end
 
 do
     local header = Instance.new("TextLabel")
@@ -2481,7 +2464,7 @@ do
     subHeader.Position = UDim2.new(0, 0, 0, 18)
     subHeader.BackgroundTransparency = 1
     subHeader.ZIndex = 3
-    subHeader.Text = "🔒 Сообщения не идут в чат Роблокса. Видят только юзеры скрипта."
+    subHeader.Text = "🔒 Защищенный канал связи. База закрыта от посторонних."
     subHeader.Font = Enum.Font.GothamMedium
     subHeader.TextSize = 9
     subHeader.TextXAlignment = Enum.TextXAlignment.Left
@@ -2614,28 +2597,22 @@ local function addChatMessage(senderName: string, text: string, isLocal: boolean
         UI.Scrolling.CanvasPosition = Vector2.new(0, 999999)
     end)
 
-    -- Если сообщение от другого пользователя
-    if not isLocal then
-        -- Проигрываем звук уведомления
-        if typeof(playSound) == "function" then
-            pcall(playSound, "rbxassetid://6518811702", 0.3, 1.2)
-        end
-        
-        -- Показываем уведомление, если страница чата сейчас закрыта/не активна
-        if not ChatPage.Visible then
-            triggerNotification("💬 " .. senderName, text)
-        end
+    if not isLocal and typeof(playSound) == "function" then
+        pcall(playSound, "rbxassetid://6518811702", 0.25, 1.4)
     end
 end
 
 -- ------------------------------------------------------------------------------
--- СЕТЕВАЯ ЧАСТЬ (FIREBASE REST API)
+-- СЕТЕВАЯ ЧАСТЬ С АВТОРИЗАЦИЕЙ (FIREBASE REST API + AUTH)
 -- ------------------------------------------------------------------------------
 local FIREBASE_BASE = "https://tys-chat-8cfc2-default-rtdb.firebaseio.com"
+local FIREBASE_SECRET = "N2KgQL9bTL51nQOvNfYgr6fjfNpKwkp4NjMe0jKK" -- Секрет базы данных
+
 local roomKey = (game.JobId ~= "" and game.JobId) or "GlobalTestRoom"
 
-local chatPostUrl = string.format("%s/chats/%s.json", FIREBASE_BASE, roomKey)
-local chatGetUrl = string.format('%s/chats/%s.json?orderBy="$key"&limitToLast=20', FIREBASE_BASE, roomKey)
+-- Передаем токен через параметр auth
+local chatPostUrl = string.format("%s/chats/%s.json?auth=%s", FIREBASE_BASE, roomKey, FIREBASE_SECRET)
+local chatGetUrl = string.format('%s/chats/%s.json?auth=%s&orderBy="$key"&limitToLast=20', FIREBASE_BASE, roomKey, FIREBASE_SECRET)
 
 local httpRequest = request or http_request or (syn and syn.request) or (http and http.request)
 local processedMessageIds = {}
@@ -2656,10 +2633,7 @@ local function sendSecretMessage()
     local senderName = LocalPlayer.DisplayName .. " (@" .. LocalPlayer.Name .. ")"
     addChatMessage(senderName, text, true)
 
-    if not httpRequest then
-        triggerNotification("⚠️ Ошибка чата", "HTTP запросы не поддерживаются эксплойтом!")
-        return
-    end
+    if not httpRequest then return end
 
     local payload = HttpService:JSONEncode({
         sender = senderName,
@@ -2687,6 +2661,7 @@ UI.TextBox.FocusLost:Connect(function(enterPressed)
     end
 end)
 
+-- Фоновый слушатель базы данных
 task.spawn(function()
     while task.wait(2.5) do
         if httpRequest then
