@@ -3186,3 +3186,56 @@ if httpRequest then
         end
     end)
 end
+
+-- ==============================================================================
+-- СИСТЕМА ТЕГА ПОЛЬЗОВАТЕЛЯ ХАБА (PERSISTENT OVERHEAD TAG)
+-- ==============================================================================
+local function attachUserTag(char: Model)
+    local head = char:WaitForChild("Head", 5)
+    if not head then return end
+
+    if head:FindFirstChild("TysOverheadTag") then
+        head.TysOverheadTag:Destroy()
+    end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "TysOverheadTag"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 115, 0, 28)
+    billboard.StudsOffset = Vector3.new(0, 2.2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.ResetOnSpawn = false
+    billboard.Parent = head
+
+    local tagFrame = Instance.new("Frame")
+    tagFrame.Size = UDim2.new(1, 0, 1, 0)
+    tagFrame.BackgroundColor3 = Color3.fromRGB(18, 8, 32)
+    tagFrame.BackgroundTransparency = 0.3
+    tagFrame.BorderColor3 = Color3.fromRGB(180, 70, 255)
+    tagFrame.BorderSizePixel = 1
+    tagFrame.Parent = billboard
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = tagFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(170, 60, 255)
+    stroke.Thickness = 1
+    stroke.Parent = tagFrame
+
+    local tagText = Instance.new("TextLabel")
+    tagText.Size = UDim2.new(1, 0, 1, 0)
+    tagText.BackgroundTransparency = 1
+    tagText.Text = "🌪️ USER"
+    tagText.Font = Enum.Font.GothamBold
+    tagText.TextSize = 11
+    tagText.TextColor3 = Color3.fromRGB(225, 185, 255)
+    tagText.Parent = tagFrame
+end
+
+-- Привязка к текущему и будущим спавнам
+if LocalPlayer.Character then
+    task.spawn(attachUserTag, LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(attachUserTag)
