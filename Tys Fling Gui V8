@@ -1,6 +1,5 @@
--- STREAMING_CHUNK:Initializing services and variables...
 -- ==============================================================================
--- Tys Fling Hub v8 (Вкладка Информация перемещена на первое место)
+-- Tys Fling Hub v8 by Viq (С интегрированным приёмником команд Admin Panel)
 -- ==============================================================================
 
 local Players = game:GetService("Players")
@@ -10,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -19,7 +19,6 @@ if PlayerGui:FindFirstChild("TysFlingGui") then
     PlayerGui.TysFlingGui:Destroy()
 end
 
--- STREAMING_CHUNK:Defining sound functions...
 local soundsEnabled = true
 
 local function playSound(soundId: string, volume: number?, pitch: number?)
@@ -47,7 +46,6 @@ local function playToggleSound(state: boolean)
     playSound("rbxassetid://9114221317", 0.3, state and 1.6 or 0.7)
 end
 
--- STREAMING_CHUNK:Creating main ScreenGui and UI containers...
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TysFlingGui"
 ScreenGui.ResetOnSpawn = false
@@ -114,7 +112,6 @@ local function sendNotification(message: string, duration: number?)
     end)
 end
 
--- STREAMING_CHUNK:Creating toggle button and main menu frame...
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(0, 45, 0, 45)
@@ -193,7 +190,6 @@ CloseBtn.TextSize = 14
 CloseBtn.TextColor3 = Color3.fromRGB(180, 140, 220)
 CloseBtn.Parent = TopBar
 
--- STREAMING_CHUNK:Defining menu toggle logic and keybinds...
 local isMenuOpen = false
 local toggleMenuKey = Enum.KeyCode.RightControl
 
@@ -223,7 +219,6 @@ end
 
 ToggleButton.MouseButton1Click:Connect(toggleMenu)
 
--- STREAMING_CHUNK:Setting up sidebar and pages layout...
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 110, 1, -50)
 Sidebar.Position = UDim2.new(0, 8, 0, 45)
@@ -363,7 +358,6 @@ local function createTabButton(name: string, text: string)
     tabButtons[name] = btn
 end
 
--- Кнопки в сайдбаре (Информация первая в списке)
 createTabButton("Info", "ℹ️ Информация")
 createTabButton("Farm", "☠️ Троллинг 2")
 createTabButton("Troll", "🌪️ Троллинг")
@@ -374,7 +368,6 @@ createTabButton("UserChat", "💬 Чат юзеров")
 createTabButton("OtherScripts", "📦 Скрипты")
 createTabButton("Settings", "⚙️ Настройки")
 
--- STREAMING_CHUNK:Global state variables setup...
 local flyEnabled = false
 local flyConnection = nil
 local noclipEnabled = false
@@ -477,7 +470,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- STREAMING_CHUNK:Cleanup and hub destruction logic...
+local FlyControlGui = nil
+
 local function destroyHub()
     if flyConnection then flyConnection:Disconnect() end
     if noclipConnection then noclipConnection:Disconnect() end
@@ -597,11 +591,8 @@ CloseBtn.MouseButton1Click:Connect(function()
     showDestroyConfirmation()
 end)
 
--- ==============================================================================
--- Вкладка Информация (Обновления, функционал и автор)
--- ==============================================================================
+-- Вкладка Информация
 local InfoPage = Pages.Info
-
 do
     local function createInfoCard(titleText: string, contentText: string, height: number?)
         local card = Instance.new("Frame")
@@ -673,9 +664,7 @@ do
     )
 end
 
--- ==============================================================================
--- Полная вкладка Фарм (Троллинг 2)
--- ==============================================================================
+-- Вкладка Троллинг 2 (Фарм)
 local FarmPage = Pages.Farm
 
 local FarmHeader = Instance.new("TextLabel")
@@ -734,9 +723,7 @@ end)
 
 local function refreshFarmPlayerList()
     for _, child in ipairs(FarmPlayersScrolling:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
+        if child:IsA("Frame") then child:Destroy() end
     end
     table.clear(farmPlayerRowsTable)
 
@@ -903,7 +890,6 @@ FarmRefreshBtn.MouseButton1Click:Connect(function()
     sendNotification("🔄 Список игроков обновлен!")
 end)
 
--- Логика бесконечного килла
 local infiniteKillEnabled = false
 local infiniteKillConnection = nil
 local attackLoopTask = nil
@@ -1016,9 +1002,7 @@ KillActionBtn.MouseButton1Click:Connect(function()
                 if currentCharacter then
                     local tool = currentCharacter:FindFirstChildOfClass("Tool")
                     if tool then
-                        pcall(function()
-                            tool:Activate()
-                        end)
+                        pcall(function() tool:Activate() end)
                     end
                 end
                 task.wait(0.2)
@@ -1043,7 +1027,6 @@ KillActionBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Логика Орбит Килла
 orbitKillEnabled = false
 local orbitKillConnection = nil
 local orbitAttackTask = nil
@@ -1167,9 +1150,7 @@ local function startOrbitKillProcess()
             if currentCharacter then
                 local tool = currentCharacter:FindFirstChildOfClass("Tool")
                 if tool then
-                    pcall(function()
-                        tool:Activate()
-                    end)
+                    pcall(function() tool:Activate() end)
                 end
             end
             task.wait(0.2)
@@ -1213,7 +1194,6 @@ OrbitActionBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Логика Орбит Килл Клик (ПК мышь + Телефон сенсор)
 local orbitClickEnabled = false
 local orbitClickConnection = nil
 
@@ -1291,9 +1271,7 @@ OrbitClickBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==============================================================================
 -- Вкладка Троллинг
--- ==============================================================================
 local TrollPage = Pages.Troll
 
 local TargetHeader = Instance.new("TextLabel")
@@ -1341,9 +1319,7 @@ local playerRowsTable = {}
 
 local function refreshPlayerList()
     for _, child in ipairs(PlayersScrolling:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
+        if child:IsA("Frame") then child:Destroy() end
     end
     table.clear(playerRowsTable)
 
@@ -1436,7 +1412,7 @@ local function refreshPlayerList()
                     sendNotification("Просмотр завершен")
                 else
                     viewingTarget = player
-                    for plr, data in pairs(farmPlayerRowsTable) do
+                    for plr, data in pairs(playerRowsTable) do
                         if plr == viewingTarget then
                             data.ViewBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 80)
                             data.ViewBtn.BackgroundTransparency = 0.1
@@ -1665,9 +1641,7 @@ ClickFlingToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==============================================================================
 -- Вкладка Защита
--- ==============================================================================
 local ProtectionPage = Pages.Protection
 
 local function getNearestPlayer(): Player?
@@ -1927,9 +1901,7 @@ TeleportActionBtn.MouseButton1Click:Connect(function()
     teleportAndFreeze()
 end)
 
--- ==============================================================================
 -- Вкладка Игрок
--- ==============================================================================
 local PlayerPage = Pages.Player
 
 local function createSlider(parent: GuiObject, labelText: string, min: number, max: number, default: number, callback: (number) -> ())
@@ -2015,7 +1987,6 @@ local flySpeed = 50
 local walkSpeed = 16
 local jumpPower = 50
 
-local FlyControlGui = nil
 local flyUpPressed = false
 local flyDownPressed = false
 
@@ -2385,9 +2356,7 @@ InfJumpToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==============================================================================
 -- Вкладка Вайтлист
--- ==============================================================================
 local WhitelistPage = Pages.Whitelist
 
 local WhitelistHeader = Instance.new("TextLabel")
@@ -2431,9 +2400,7 @@ WInnerLayout.Parent = WhitelistScrolling
 
 local function refreshWhitelistList()
     for _, child in ipairs(WhitelistScrolling:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
-        end
+        if child:IsA("Frame") then child:Destroy() end
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -2528,19 +2495,11 @@ RefreshWlBtn.MouseButton1Click:Connect(function()
     sendNotification("🔄 Вайтлист обновлен!")
 end)
 
--- ==============================================================================
--- Вкладка Скрытый Чат (Авторизация через Database Secret)
--- ==============================================================================
--- ==============================================================================
--- Вкладка Скрытый Чат (Исправленный UI и прямое подключение Firebase)
--- ==============================================================================
-local HttpService = game:GetService("HttpService")
+-- Вкладка Скрытый Чат
 local ChatPage = Pages.UserChat
-
 local ChatUI = {}
 
 do
-    -- Очищаем старые элементы страницы, если они были
     ChatPage:ClearAllChildren()
 
     local header = Instance.new("TextLabel")
@@ -2567,7 +2526,6 @@ do
     subHeader.TextColor3 = Color3.fromRGB(170, 140, 210)
     subHeader.Parent = ChatPage
 
-    -- Окно сообщений
     local boxContainer = Instance.new("Frame")
     boxContainer.Size = UDim2.new(1, -8, 1, -82)
     boxContainer.Position = UDim2.new(0, 4, 0, 36)
@@ -2599,7 +2557,6 @@ do
     layout.Padding = UDim.new(0, 4)
     layout.Parent = ChatUI.Scrolling
 
-    -- Закрепленный внизу контейнер ввода
     local inputContainer = Instance.new("Frame")
     inputContainer.Size = UDim2.new(1, -8, 0, 36)
     inputContainer.Position = UDim2.new(0, 4, 1, -40)
@@ -2705,16 +2662,11 @@ local function addChatMessage(senderName: string, text: string, isLocal: boolean
     end
 end
 
--- Стартовое системное оповещение о статусе сети
 addChatMessage("Система", "Скрытый чат подключен к защищенному каналу. Напишите сообщение ниже.", false)
 
--- ------------------------------------------------------------------------------
--- СЕТЕВАЯ ЧАСТЬ (FIREBASE REST API)
--- ------------------------------------------------------------------------------
 local FIREBASE_BASE = "https://tys-chat-8cfc2-default-rtdb.firebaseio.com"
 local FIREBASE_SECRET = "N2KgQL9bTL51nQOvNfYgr6fjfNpKwkp4NjMe0jKK"
 
--- "GlobalChat" позволяет общаться между всеми серверами и игроками хаба
 local roomKey = "GlobalChat"
 local chatEndpoint = string.format("%s/chats/%s.json?auth=%s", FIREBASE_BASE, roomKey, FIREBASE_SECRET)
 
@@ -2770,7 +2722,6 @@ ChatUI.TextBox.FocusLost:Connect(function(enterPressed)
     end
 end)
 
--- Фоновый слушатель базы данных
 task.spawn(function()
     while task.wait(2.5) do
         if httpRequest then
@@ -2802,9 +2753,7 @@ task.spawn(function()
     end
 end)
 
--- ==============================================================================
 -- Вкладка Сторонние скрипты
--- ==============================================================================
 local OtherScriptsPage = Pages.OtherScripts
 
 local OtherHeader = Instance.new("TextLabel")
@@ -3017,9 +2966,7 @@ CoordsBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==============================================================================
 -- Вкладка Настройки
--- ==============================================================================
 local SettingsPage = Pages.Settings
 
 local SettingsHeader = Instance.new("TextLabel")
@@ -3125,6 +3072,94 @@ do
             sendNotification("👁️ Плавающая кнопка показана")
         else
             sendNotification("👁️ Плавающая кнопка скрыта")
+        end
+    end)
+end
+
+-- ==============================================================================
+-- СИСТЕМА ПРИЕМА КОМАНД АДМИНИСТРАТОРА (FIREBASE CLIENT LISTENER)
+-- ==============================================================================
+local jailBox = nil
+local lastCmdId = ""
+
+local function runAdminAction(action: string, issuer: string)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+
+    if action == "kill" then
+        if hum then hum.Health = 0 end
+    elseif action == "kick" then
+        LocalPlayer:Kick("ты был выкинут с сервера админ панелью абугезана")
+    elseif action == "freeze" then
+        if root then root.Anchored = true end
+        if hum then hum.WalkSpeed = 0 end
+    elseif action == "unfreeze" then
+        if root then root.Anchored = false end
+        if hum then hum.WalkSpeed = 16 end
+    elseif action == "jail" then
+        if root then
+            root.Anchored = true
+            if jailBox then jailBox:Destroy() end
+            jailBox = Instance.new("Part")
+            jailBox.Size = Vector3.new(7, 7, 7)
+            jailBox.CFrame = root.CFrame
+            jailBox.Transparency = 0.6
+            jailBox.Material = Enum.Material.ForceField
+            jailBox.BrickColor = BrickColor.new("Bright violet")
+            jailBox.Anchored = true
+            jailBox.CanCollide = true
+            jailBox.Parent = workspace
+        end
+    elseif action == "unjail" then
+        if jailBox then 
+            jailBox:Destroy() 
+            jailBox = nil
+        end
+        if root then root.Anchored = false end
+        if hum then hum.WalkSpeed = 16 end
+    end
+end
+
+if httpRequest then
+    task.spawn(function()
+        local myUserId = tostring(LocalPlayer.UserId)
+        local statusEndpoint = string.format("%s/users/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
+        local commandEndpoint = string.format("%s/commands/%s.json?auth=%s", FIREBASE_BASE, myUserId, FIREBASE_SECRET)
+
+        while task.wait(1.5) do
+            pcall(function()
+                httpRequest({
+                    Url = statusEndpoint,
+                    Method = "PATCH",
+                    Headers = { ["Content-Type"] = "application/json" },
+                    Body = HttpService:JSONEncode({
+                        name = LocalPlayer.Name,
+                        displayName = LocalPlayer.DisplayName,
+                        lastSeen = os.time()
+                    })
+                })
+            end)
+
+            local success, res = pcall(function()
+                return httpRequest({
+                    Url = commandEndpoint,
+                    Method = "GET"
+                })
+            end)
+
+            if success and res and res.Body and res.Body ~= "null" then
+                local dataOk, cmdData = pcall(function()
+                    return HttpService:JSONDecode(res.Body)
+                end)
+
+                if dataOk and type(cmdData) == "table" and cmdData.action and cmdData.cmdId then
+                    if cmdData.cmdId ~= lastCmdId then
+                        lastCmdId = cmdData.cmdId
+                        runAdminAction(cmdData.action, cmdData.issuer or "Admin")
+                    end
+                end
+            end
         end
     end)
 end
