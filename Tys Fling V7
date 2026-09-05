@@ -1132,6 +1132,7 @@ OrbitActionBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Логика Орбит Килл Клик (нажатие на игрока в мире для орбиты)
+-- Логика Орбит Килл Клик (поддержка ПК клика и мобильного тапа по экрану)
 local orbitClickEnabled = false
 local orbitClickConnection = nil
 
@@ -1142,7 +1143,7 @@ OrbitClickBtn.BackgroundTransparency = 0.2
 OrbitClickBtn.BorderColor3 = Color3.fromRGB(200, 80, 255)
 OrbitClickBtn.BorderSizePixel = 1
 OrbitClickBtn.ZIndex = 3
-OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
+OrbitClickBtn.Text = "🖱️/📱 ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
 OrbitClickBtn.Font = Enum.Font.GothamBold
 OrbitClickBtn.TextSize = 11
 OrbitClickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1157,30 +1158,53 @@ OrbitClickBtn.MouseButton1Click:Connect(function()
     playToggleSound(orbitClickEnabled)
 
     if orbitClickEnabled then
-        OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВКЛ"
+        OrbitClickBtn.Text = "🖱️/📱 ОРБИТ КИЛЛ КЛИК: ВКЛ"
         OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(50, 15, 90)
-        sendNotification("🖱️ Нажмите на любого игрока в игре для Орбит Килла!")
+        sendNotification("🎯 Нажмите/тапните по любому игроку в мире!")
 
         orbitClickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed then return end
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local mouse = LocalPlayer:GetMouse()
-                local target = mouse.Target
-                
-                if target and target.Parent then
-                    local character = target.Parent
-                    local clickedPlayer = Players:GetPlayerFromCharacter(character)
+            
+            -- Поддержка клика мышью (ПК) и касания пальцем (Телефон/Планшет)
+            local isMouse = (input.UserInputType == Enum.UserInputType.MouseButton1)
+            local isTouch = (input.UserInputType == Enum.UserInputType.Touch)
+
+            if isMouse or isTouch then
+                local hitPart = nil
+
+                if isTouch then
+                    -- Для сенсорных экранов пускаем луч из координат пальца
+                    local unitRay = Camera:ViewportPointToRay(input.Position.X, input.Position.Y)
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
                     
-                    -- Проверяем, если кликнули по модели другого игрока
+                    if LocalPlayer.Character then
+                        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                    end
+                    
+                    local rayResult = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
+                    if rayResult then
+                        hitPart = rayResult.Instance
+                    end
+                else
+                    -- Для мыши берем текущий Mouse.Target
+                    local mouse = LocalPlayer:GetMouse()
+                    hitPart = mouse.Target
+                end
+
+                if hitPart and hitPart.Parent then
+                    -- Поиск игрока вверх по иерархии деталей модели
+                    local character = hitPart.Parent
+                    local clickedPlayer = Players:GetPlayerFromCharacter(character)
+
                     if not clickedPlayer and character.Parent then
                         clickedPlayer = Players:GetPlayerFromCharacter(character.Parent)
                     end
-                    
+
                     if clickedPlayer and clickedPlayer ~= LocalPlayer then
                         selectedFarmTarget = clickedPlayer
-                        sendNotification("🎯 Выбрана цель кликом: " .. clickedPlayer.Name)
-                        
-                        -- Если орбит килл уже работал, перезапускаем его на новую цель
+                        sendNotification("🎯 Выбрана цель тапом: " .. clickedPlayer.Name)
+
                         if orbitKillEnabled then
                             stopOrbitKill()
                         end
@@ -1190,13 +1214,13 @@ OrbitClickBtn.MouseButton1Click:Connect(function()
             end
         end)
     else
-        OrbitClickBtn.Text = "🖱️ ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
+        OrbitClickBtn.Text = "🖱️/📱 ОРБИТ КИЛЛ КЛИК: ВЫКЛ"
         OrbitClickBtn.BackgroundColor3 = Color3.fromRGB(90, 30, 140)
         if orbitClickConnection then
             orbitClickConnection:Disconnect()
             orbitClickConnection = nil
         end
-        sendNotification("🖱️ Орбит килл клик выключен.")
+        sendNotification("🛑 Орбит килл клик/тап выключен.")
     end
 end)
 -- ==============================================================================
